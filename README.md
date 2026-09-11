@@ -2,7 +2,7 @@
 
 Repositorio del curso **Visualización de la Información (IIC2026)**, destinado al desarrollo y seguimiento del proyecto del semestre.
 
-## Integrantes:
+### Integrantes:
 
 - Fernanda Oyarzún
 - Camila Matamala
