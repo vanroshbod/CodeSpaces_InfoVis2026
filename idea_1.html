@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universo Nutricional - InfoVis IIC2026</title>
+    
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; color: #e0e0e0; overflow: hidden; }
+
+        /* --- Layout --- */
+        #dashboard { display: flex; width: 100vw; height: 100vh; }
+        
+        #sidebar {
+            flex: 0 0 320px; 
+            background-color: #1a1a1a; padding: 20px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.5); overflow-y: auto; z-index: 10;
+            display: flex; flex-direction: column;
+        }
+        
+        #viz-container { flex: 1; position: relative; overflow: hidden; }
+
+        /* --- Vistas del Sidebar --- */
+        .sidebar-view { display: none; flex-direction: column; height: 100%; }
+        .sidebar-view.active { display: flex; }
+
+        #sidebar h2 { margin-top: 0; color: #fff; font-size: 1.3em; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .instrucciones { font-size: 0.85em; color: #888; margin-bottom: 15px; line-height: 1.4; }
+
+        /* Leyenda de Colores */
+        .legend-item {
+            display: flex; align-items: center; margin-bottom: 8px;
+            cursor: pointer; padding: 5px; border-radius: 5px; transition: background 0.2s;
+        }
+        .legend-item:hover { background-color: #333; }
+        .color-box { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; flex-shrink: 0; }
+        .legend-text { font-size: 0.8em; line-height: 1.2;}
+
+        /* Leyenda de Tamaños */
+        .size-legend { margin-top: 15px; padding-top: 15px; border-top: 1px solid #333; }
+        .size-legend-title { font-size: 0.9em; color: #ccc; margin-bottom: 10px; font-weight: bold;}
+        .size-item { display: flex; align-items: center; margin-bottom: 8px; }
+        .size-circle { border: 1px solid #888; border-radius: 50%; background: none; margin-right: 15px; }
+        .size-text { font-size: 0.8em; color: #ccc;}
+
+        /* Detalles Nutricionales (Ficha) */
+        .ficha-header { background-color: #222; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #444; }
+        .ficha-titulo { color: #00d2ff; font-weight: bold; font-size: 1.1em; margin-bottom: 5px; }
+        .ficha-prep { color: #bbb; font-size: 0.9em; font-style: italic; margin-bottom: 5px;}
+        .ficha-categoria { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.75em; font-weight: bold; color: #000; }
+        
+        .nutrition-table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+        .nutrition-table th { text-align: left; padding: 8px; border-bottom: 1px solid #444; color: #aaa; }
+        .nutrition-table td { text-align: right; padding: 8px; border-bottom: 1px solid #333; font-weight: bold; }
+        
+        .btn-volver { 
+            margin-top: 20px; padding: 10px; background-color: #333; color: #fff; text-align: center;
+            border: 1px solid #555; border-radius: 5px; cursor: pointer; transition: background 0.2s;
+        }
+        .btn-volver:hover { background-color: #444; }
+
+        /* --- Tooltip D3 --- */
+        .tooltip {
+            position: absolute; background: rgba(20, 20, 20, 0.95); border: 1px solid #444;
+            padding: 10px; border-radius: 8px; pointer-events: none; opacity: 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.7); z-index: 100; font-size: 0.85em; transition: opacity 0.2s;
+            max-width: 250px;
+        }
+        .tooltip .title { font-weight: bold; color: #00d2ff; font-size: 1.05em; margin-bottom: 4px; border-bottom: 1px solid #333; padding-bottom: 4px;}
+        .tooltip .detail { margin: 2px 0; }
+        .tooltip span { font-weight: bold; color: #fff; }
+        .tooltip-hint { margin-top: 5px; font-size: 0.8em; color: #ffd700; font-style: italic; text-align: right;}
+
+        /* --- Ejes D3 --- */
+        svg text { font-family: sans-serif; }
+        .axis-label { fill: #ccc; font-size: 12px; font-weight: bold; }
+        .domain, .tick line { stroke: #333; }
+        .tick text { fill: #999; }
+        
+        .bubble { transition: opacity 0.2s; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="dashboard">
+        <div id="sidebar">
+            <div id="vista-leyenda" class="sidebar-view active">
+                <h2>Categorías</h2>
+                <div class="instrucciones">
+                    <strong>Filtra</strong> pasando el mouse por la leyenda. <strong>Haz clic</strong> en las burbujas para escuchar su sonido (tono = calorías, duración = azúcar normalizada) y ver la ficha técnica.
+                </div>
+                <div id="legend-container"></div>
+                
+                <div class="size-legend">
+                    <div class="size-legend-title">Referencia de Tamaño (Vaso)</div>
+                    <div id="size-legend-container"></div>
+                </div>
+            </div>
+
+            <div id="vista-detalle" class="sidebar-view">
+                <h2>Ficha Nutricional</h2>
+                <div id="detalle-contenido"></div>
+                <div class="btn-volver" onclick="mostrarLeyenda()">← Volver a Categorías</div>
+            </div>
+        </div>
+        
+        <div id="viz-container">
+            <div id="tooltip" class="tooltip"></div>
+        </div>
+    </div>
+
+    <script>
+        const tamanosRef = [
+            { nombre: "Short", ml: 236 },
+            { nombre: "Tall", ml: 354 },
+            { nombre: "Grande", ml: 473 },
+            { nombre: "Venti", ml: 591 }
+        ];
+
+        function mostrarDetalle(datosBebida, colorFondo) {
+            document.getElementById('vista-leyenda').classList.remove('active');
+            document.getElementById('vista-detalle').classList.add('active');
+
+            const cont = document.getElementById('detalle-contenido');
+            let htmlFicha = `
+                <div class="ficha-header" style="border-left-color: ${colorFondo}">
+                    <div class="ficha-titulo">${datosBebida.Bebida}</div>
+                    <div class="ficha-prep">${datosBebida.tamano_preparacion_bebida}</div>
+                    <div class="ficha-categoria" style="background-color: ${colorFondo}">${datosBebida.Categoria_bebida}</div>
+                </div>
+                <table class="nutrition-table">
+                    <tbody>
+                        <tr><th>Tamaño Vaso</th><td><span style="color:#00d2ff">${datosBebida.tamano_vaso} (${datosBebida.volumen_ml} ml)</span></td></tr>
+                        <tr><th>Calorías</th><td>${datosBebida['Calories (Cal)']} Cal</td></tr>
+                        <tr><th>Grasas Totales</th><td>${datosBebida['Total Fat (g)']} g</td></tr>
+                        <tr><th>Concentración Azúcar</th><td><span style="color:#ff6b6b">${Number(datosBebida.azucar_pct).toFixed(2)}% (g/100ml)</span></td></tr>
+                        <tr><th>Cafeína</th><td>${datosBebida.Caffeine_num} mg</td></tr>
+                    </tbody>
+                </table>
+            `;
+            cont.innerHTML = htmlFicha;
+        }
+
+        function mostrarLeyenda() {
+            document.getElementById('vista-detalle').classList.remove('active');
+            document.getElementById('vista-leyenda').classList.add('active');
+        }
+
+        const synth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: "sine" },
+            envelope: { attack: 0.05, decay: 0.2, sustain: 0.4, release: 1.5 }
+        }).toDestination();
+
+        // Carga de datos mediante fetch (más seguro en entornos locales con Live Server)
+        fetch('data/data_starbucks_detallado.json')
+            .then(response => {
+                if (!response.ok) throw new Error('No se pudo cargar el archivo JSON');
+                return response.json();
+            })
+            .then(data => {
+                console.log("Datos cargados con éxito:", data.length);
+                const filtrados = data.filter(d => d.Bebida && d.Categoria_bebida);
+                dibujarVisualizacion(filtrados);
+            })
+            .catch(error => {
+                console.error("Error al cargar los datos:", error);
+                alert("Error al cargar 'data_starbucks_detallado.json'. Asegúrate de tener el archivo JSON en la misma carpeta y de usar Live Server en VS Code.");
+            });
+
+        function dibujarVisualizacion(data) {
+            const container = document.getElementById('viz-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            const margin = { top: 30, right: 80, bottom: 60, left: 70 };
+
+            d3.select("#viz-container svg").remove();
+            const svg = d3.select("#viz-container").append("svg").attr("width", width).attr("height", height);
+
+            // ORDENAR DATOS: Esto es vital. Dibuja los vasos grandes primero y los pequeños al final 
+            // para que las burbujas pequeñas no queden escondidas debajo de las grandes.
+            data.sort((a, b) => (b.volumen_ml || 0) - (a.volumen_ml || 0));
+
+            // Eje X: Calorías
+            const xScale = d3.scaleLinear()
+                .domain([-10, d3.max(data, d => Number(d['Calories (Cal)']) || 0) + 30])
+                .range([margin.left, width - margin.right]);
+            
+            // Eje Y: Concentración normalizada de azúcar (g/100ml)
+            const yScale = d3.scaleLinear()
+                .domain([-2, d3.max(data, d => Number(d.azucar_pct) || 0) + 3])
+                .range([height - margin.bottom, margin.top]);
+            
+            // ESCALA DE TAMAÑOS OPTIMIZADA (Más agresiva)
+            // Usamos un rango mucho más amplio y un exponente que haga que los vasos grandes destaquen de verdad
+            const sizeScale = d3.scalePow().exponent(1.5)
+                .domain([30, 591])
+                .range([8, 20]); 
+
+            const categorias = Array.from(new Set(data.map(d => d.Categoria_bebida)));
+            const colorScale = d3.scaleOrdinal().domain(categorias).range(d3.schemeSet3);
+
+            const minCal = d3.min(data, d => Number(d['Calories (Cal)']) || 0);
+            const maxCal = d3.max(data, d => Number(d['Calories (Cal)']) || 1);
+            const freqScale = d3.scaleLinear().domain([minCal, maxCal]).range([800, 150]); 
+
+            const minSug = d3.min(data, d => Number(d.azucar_pct) || 0);
+            const maxSug = d3.max(data, d => Number(d.azucar_pct) || 1);
+            const durationScale = d3.scaleLinear().domain([minSug, maxSug]).range([0.1, 2.5]);
+
+            const xAxis = d3.axisBottom(xScale).tickFormat(d => d);
+            const yAxis = d3.axisLeft(yScale).tickFormat(d => d + "%");
+
+            svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`).call(xAxis).style("font-size", "11px");
+            svg.append("text").attr("class", "axis-label").attr("x", width / 2).attr("y", height - 20).style("text-anchor", "middle").text("Calorías (Cal)");
+
+            svg.append("g").attr("transform", `translate(${margin.left},0)`).call(yAxis).style("font-size", "11px");
+            svg.append("text").attr("class", "axis-label").attr("transform", "rotate(-90)").attr("x", -height / 2).attr("y", 20).style("text-anchor", "middle").text("Concentración de Azúcar Normalizada (g/100ml)");
+
+            const maxItem = data.reduce((prev, current) => (Number(prev.azucar_pct) > Number(current.azucar_pct)) ? prev : current);
+            const targetX = xScale(Number(maxItem['Calories (Cal)']) || 0), targetY = yScale(Number(maxItem.azucar_pct) || 0);
+            const maxRadius = sizeScale(Number(maxItem.volumen_ml) || 473);
+
+            svg.append("defs").append("marker").attr("id", "arrowhead").attr("viewBox", "-0 -5 10 10").attr("refX", 8).attr("refY", 0).attr("orient", "auto").attr("markerWidth", 10).attr("markerHeight", 10).attr("xoverflow", "visible").append("svg:path").attr("d", "M 0,-5 L 10,0 L 0,5").attr("fill", "#ff4757");
+
+            const bubbleGroup = svg.append("g");
+            const tooltip = d3.select("#tooltip");
+
+            const bubbles = bubbleGroup.selectAll("circle").data(data).enter().append("circle").attr("class", "bubble")
+                .attr("cx", d => xScale(Number(d['Calories (Cal)']) || 0))
+                .attr("cy", d => yScale(Number(d.azucar_pct) || 0))
+                .attr("r", d => sizeScale(Number(d.volumen_ml) || 473)) 
+                .attr("fill", d => colorScale(d.Categoria_bebida))
+                .style("opacity", 0.6) // Opacidad óptima
+                .attr("stroke", "#000") 
+                .attr("stroke-width", 0.5);
+
+            const annotationGroup = svg.append("g").attr("class", "annotation");
+            function pulse() {
+                pulseCircle.transition().duration(1500).attr("r", maxRadius * 2.5).style("opacity", 0).transition().duration(0).attr("r", maxRadius).style("opacity", 1).on("end", pulse);
+            }
+            const pulseCircle = annotationGroup.append("circle").attr("cx", targetX).attr("cy", targetY).attr("r", maxRadius).attr("fill", "none").attr("stroke", "#ff4757").attr("stroke-width", 2).style("pointer-events", "none");
+            pulse();
+
+            const textX = targetX - 160, textY = targetY - 60;
+            annotationGroup.append("line").attr("x1", textX + 80).attr("y1", textY + 25).attr("x2", targetX - 6).attr("y2", targetY - 6).attr("stroke", "#ff4757").attr("stroke-width", 2).attr("marker-end", "url(#arrowhead)");
+            annotationGroup.append("text").attr("x", textX).attr("y", textY).text("¡MÁXIMA CONCENTRACIÓN!").attr("fill", "#ff4757").style("font-weight", "bold").style("font-size", "14px");
+            annotationGroup.append("text").attr("x", textX).attr("y", textY + 16).text(maxItem.Bebida.substring(0, 25) + "...").attr("fill", "#ccc").style("font-size", "11px");
+
+            bubbles.on("mouseover", function(event, d) {
+                bubbles.style("opacity", 0.1); 
+                
+                const baseR = sizeScale(Number(d.volumen_ml) || 473); 
+                d3.select(this).style("opacity", 1).attr("stroke", "#fff").attr("stroke-width", 2).attr("r", baseR * 1.3); 
+
+                let xPos = event.pageX + 15, yPos = event.pageY - 20;
+                if(xPos + 250 > window.innerWidth) xPos = event.pageX - 265;
+
+                tooltip.style("opacity", 1).html(`
+                    <div class="title">${d.Bebida}</div>
+                    <div class="detail">Preparación: <span>${d.tamano_preparacion_bebida}</span></div>
+                    <div class="detail">Azúcar Normalizada: <span style="color:#ff6b6b">${Number(d.azucar_pct).toFixed(2)}%</span></div>
+                    <div class="tooltip-hint">👆 Haz clic para ver detalles</div>
+                `).style("left", xPos + "px").style("top", yPos + "px");
+            })
+            .on("mouseout", function(event, d) {
+                bubbles.style("opacity", 0.6); 
+                d3.select(this).attr("stroke", "#000").attr("stroke-width", 0.5).attr("r", sizeScale(Number(d.volumen_ml) || 473));
+                tooltip.style("opacity", 0);
+            })
+            .on("click", async function(event, d) {
+                if (Tone.context.state !== 'running') {
+                    await Tone.start();
+                }
+
+                const freq = freqScale(Number(d['Calories (Cal)']) || 0);
+                const duration = durationScale(Number(d.azucar_pct) || 0);
+                synth.triggerAttackRelease(freq, duration);
+                
+                const radioOriginal = sizeScale(Number(d.volumen_ml) || 473);
+
+                d3.select(this)
+                    .transition().duration(100)
+                    .attr("r", radioOriginal * 1.5)
+                    .transition().duration(200)
+                    .attr("r", radioOriginal);
+
+                mostrarDetalle(d, colorScale(d.Categoria_bebida));
+            });
+
+            const legendContainer = d3.select("#legend-container");
+            legendContainer.html(""); 
+            categorias.forEach(cat => {
+                const legendItem = legendContainer.append("div").attr("class", "legend-item")
+                    .on("mouseover", () => { bubbles.style("opacity", d => d.Categoria_bebida === cat ? 1 : 0.05); annotationGroup.style("opacity", 0.2); })
+                    .on("mouseout", () => { bubbles.style("opacity", 0.6); annotationGroup.style("opacity", 1); });
+                legendItem.append("div").attr("class", "color-box").style("background-color", colorScale(cat));
+                legendItem.append("div").attr("class", "legend-text").text(cat);
+            });
+
+            const sizeLegendContainer = d3.select("#size-legend-container");
+            sizeLegendContainer.html(""); 
+            const maxDiametro = sizeScale(591) * 2; 
+
+            tamanosRef.forEach(t => {
+                const item = sizeLegendContainer.append("div").attr("class", "size-item");
+                const diametro = sizeScale(t.ml) * 2;
+                
+                item.append("div")
+                    .attr("class", "size-circle")
+                    .style("width", diametro + "px")
+                    .style("height", diametro + "px")
+                    .style("margin-left", (maxDiametro - diametro) / 2 + "px") 
+                    .style("margin-right", "15px");
+                    
+                item.append("div").attr("class", "size-text").text(`${t.nombre} (${t.ml} ml)`);
+            });
+            
+            d3.select(window).on("resize", () => dibujarVisualizacion(data));
+        }
+    </script>
+</body>
+</html>
