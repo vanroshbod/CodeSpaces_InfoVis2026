@@ -30,6 +30,15 @@
         #sidebar h2 { margin-top: 0; color: #fff; font-size: 1.3em; border-bottom: 1px solid #333; padding-bottom: 10px; }
         .instrucciones { font-size: 0.85em; color: #888; margin-bottom: 15px; line-height: 1.4; }
 
+        /* Controles de Vista */
+        .control-group { margin-bottom: 15px; display: flex; gap: 5px; }
+        .btn-toggle { 
+            flex: 1; padding: 8px; background-color: #222; color: #888; border: 1px solid #444; 
+            border-radius: 4px; cursor: pointer; font-size: 0.8em; transition: all 0.2s;
+        }
+        .btn-toggle:hover { background-color: #333; color: #fff; }
+        .btn-toggle.active { background-color: #00d2ff; color: #000; font-weight: bold; border-color: #00d2ff; }
+
         /* Buscador */
         .buscador-container { margin-bottom: 15px; }
         #buscador { 
@@ -41,12 +50,14 @@
         #buscador:focus { border-color: #00d2ff; }
         #buscador::placeholder { color: #888; }
 
-        /* Leyendas Interactivas (Categorías y Tamaños) */
+        /* Leyendas Interactivas */
         .legend-item, .size-item {
             display: flex; align-items: center; margin-bottom: 8px;
             cursor: pointer; padding: 5px; border-radius: 5px; transition: background 0.2s;
         }
         .legend-item:hover, .size-item:hover { background-color: #333; }
+        .size-item.disabled { cursor: not-allowed; opacity: 0.5; }
+        .size-item.disabled:hover { background-color: transparent; }
         
         .color-box { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; flex-shrink: 0; }
         .legend-text, .size-text { font-size: 0.8em; line-height: 1.2;}
@@ -95,14 +106,18 @@
             <div id="vista-leyenda" class="sidebar-view active">
                 <h2>Explorador</h2>
                 
+                <div class="instrucciones" style="margin-bottom: 5px;">Densidad de datos:</div>
+                <div class="control-group">
+                    <button id="btn-vista-todas" class="btn-toggle active">Todos los Vasos</button>
+                    <button id="btn-vista-promedios" class="btn-toggle">Promedios</button>
+                </div>
+
                 <div class="buscador-container">
                     <input type="text" id="buscador" placeholder="🔍 Buscar bebida por nombre...">
                 </div>
 
                 <div class="instrucciones">
-                    <strong>Pasa el mouse</strong> para destacar o <strong>haz clic</strong> para anclar un filtro. Puedes combinar Categoría y Tamaño.
-                    <br><br>
-                    👆 <strong>Haz clic en una burbuja</strong> para aislar su familia de bebidas.
+                    <strong>Pasa el mouse</strong> o <strong>haz clic</strong> para filtrar categorías. <br>👆 <strong>Clic en burbuja</strong> para aislar su familia.
                 </div>
                 <div id="legend-container"></div>
                 
@@ -128,11 +143,23 @@
     </div>
 
     <script>
-        // VARIABLES DE ESTADO GLOBALES
+        // VARIABLES GLOBALES
+        let datosOriginales = [];
+        let datosPromedios = [];
+        let modoVista = 'todas'; // 'todas' o 'promedios'
+        
         let filtroCategoria = null; 
         let filtroTamano = null;
         let textoBusqueda = "";
         let bebidaEnFoco = null; 
+
+        // TAMAÑOS DE REFERENCIA
+        const tamanosRef = [
+            { nombre: "Short", ml: 236 },
+            { nombre: "Tall", ml: 354 },
+            { nombre: "Grande", ml: 473 },
+            { nombre: "Venti", ml: 591 }
+        ];
 
         function mostrarDetalle(datosBebida, colorFondo) {
             document.getElementById('vista-leyenda').classList.remove('active');
@@ -164,29 +191,75 @@
             document.dispatchEvent(new CustomEvent('actualizarViz'));
         }
 
+        function generarPromedios(data) {
+            const agrupados = d3.group(data, d => d.Bebida + "|" + d.tipo_leche);
+            const promedios = [];
+            
+            agrupados.forEach((values) => {
+                const first = values[0];
+                promedios.push({
+                    Bebida: first.Bebida,
+                    Categoria_bebida: first.Categoria_bebida,
+                    tipo_leche: first.tipo_leche,
+                    tamano_vaso: "Promedio",
+                    tamano_preparacion_bebida: "Promedio (" + first.tipo_leche + ")",
+                    'Calories (Cal)': d3.mean(values, d => Number(d['Calories (Cal)'])).toFixed(1),
+                    azucar_pct: d3.mean(values, d => Number(d.azucar_pct)),
+                    volumen_ml: Math.round(d3.mean(values, d => Number(d.volumen_ml))),
+                    'Total Fat (g)': d3.mean(values, d => Number(d['Total Fat (g)'])).toFixed(1),
+                    Caffeine_num: d3.mean(values, d => Number(d.Caffeine_num)).toFixed(1)
+                });
+            });
+            return promedios;
+        }
+
         const synth = new Tone.PolySynth(Tone.Synth, {
             oscillator: { type: "sine" },
             envelope: { attack: 0.05, decay: 0.2, sustain: 0.4, release: 1.5 }
         }).toDestination();
 
-        // 1. RUTA CORREGIDA AQUÍ
         fetch('data/data_starbucks_detallado.json')
             .then(response => {
-                if (!response.ok) throw new Error('No se pudo cargar el archivo JSON');
+                if (!response.ok) throw new Error('Error de red');
                 return response.json();
             })
             .then(data => {
+                // Limpieza inicial
                 data.forEach(d => {
                     let leche = d.tamano_preparacion_bebida.replace(d.tamano_vaso, '').trim();
                     d.tipo_leche = leche !== "" ? leche : "Estándar / Sin Leche";
                 });
-                const filtrados = data.filter(d => d.Bebida && d.Categoria_bebida);
-                dibujarVisualizacion(filtrados);
+                
+                datosOriginales = data.filter(d => d.Bebida && d.Categoria_bebida);
+                datosPromedios = generarPromedios(datosOriginales);
+                
+                dibujarVisualizacion(datosOriginales);
             })
             .catch(error => {
                 console.error("Error:", error);
-                alert("Error al cargar JSON. Revisa que la carpeta 'data' exista y contenga el archivo.");
+                alert("Error al cargar JSON. Verifica la carpeta 'data'.");
             });
+
+        // Eventos de los botones de agregación
+        d3.select("#btn-vista-todas").on("click", function() {
+            if(modoVista === 'todas') return;
+            modoVista = 'todas';
+            filtroTamano = null; // Reset filtro
+            d3.selectAll(".btn-toggle").classed("active", false);
+            d3.select(this).classed("active", true);
+            salirFoco();
+            dibujarVisualizacion(datosOriginales);
+        });
+
+        d3.select("#btn-vista-promedios").on("click", function() {
+            if(modoVista === 'promedios') return;
+            modoVista = 'promedios';
+            filtroTamano = null; // Reset filtro
+            d3.selectAll(".btn-toggle").classed("active", false);
+            d3.select(this).classed("active", true);
+            salirFoco();
+            dibujarVisualizacion(datosPromedios);
+        });
 
         function dibujarVisualizacion(data) {
             const container = document.getElementById('viz-container');
@@ -199,14 +272,18 @@
 
             data.sort((a, b) => (b.volumen_ml || 0) - (a.volumen_ml || 0));
 
-            const xScale = d3.scaleLinear().domain([-10, d3.max(data, d => Number(d['Calories (Cal)']) || 0) + 30]).range([margin.left, width - margin.right]);
-            const yScale = d3.scaleLinear().domain([-2, d3.max(data, d => Number(d.azucar_pct) || 0) + 3]).range([height - margin.bottom, margin.top]);
+            // Ejes estáticos basados en el dataset original para no perder la referencia espacial
+            const maxCalGlobal = d3.max(datosOriginales, d => Number(d['Calories (Cal)']) || 0);
+            const maxAzucarGlobal = d3.max(datosOriginales, d => Number(d.azucar_pct) || 0);
+
+            const xScale = d3.scaleLinear().domain([-10, maxCalGlobal + 30]).range([margin.left, width - margin.right]);
+            const yScale = d3.scaleLinear().domain([-2, maxAzucarGlobal + 3]).range([height - margin.bottom, margin.top]);
             const sizeScale = d3.scalePow().exponent(1.5).domain([30, 591]).range([8, 20]); 
 
-            const categorias = Array.from(new Set(data.map(d => d.Categoria_bebida)));
+            const categorias = Array.from(new Set(datosOriginales.map(d => d.Categoria_bebida)));
             const colorScaleCat = d3.scaleOrdinal().domain(categorias).range(d3.schemeSet3);
 
-            const leches = Array.from(new Set(data.map(d => d.tipo_leche)));
+            const leches = Array.from(new Set(datosOriginales.map(d => d.tipo_leche)));
             const colorScaleLeche = d3.scaleOrdinal().domain(leches)
                 .range(["#48dbfb", "#feca57", "#ff6b6b", "#1dd1a1", "#c8d6e5", "#ff9ff3"]);
 
@@ -222,7 +299,7 @@
             svg.append("g").attr("transform", `translate(${margin.left},0)`).call(yAxis).style("font-size", "11px");
             svg.append("text").attr("class", "axis-label").attr("transform", "rotate(-90)").attr("x", -height / 2).attr("y", 20).style("text-anchor", "middle").text("Concentración de Azúcar Normalizada (g/100ml)");
 
-            const OPACIDAD_BASE = 0.4;
+            const OPACIDAD_BASE = modoVista === 'todas' ? 0.4 : 0.7; // Más visible si hay promedios (menos burbujas)
             const bubbleGroup = svg.append("g");
             const tooltip = d3.select("#tooltip");
 
@@ -234,42 +311,27 @@
                 .style("opacity", OPACIDAD_BASE)
                 .attr("stroke", "#000").attr("stroke-width", 0.5);
 
-            // --- ANOTACIONES ---
-            const annotationGroup = svg.append("g").attr("class", "annotation");
-            const cafeGrande = data.find(d => d.Bebida === "Brewed Coffee" && d.tamano_vaso === "Venti");
-            const postrePeque = data.find(d => d.Bebida === "White Chocolate Mocha (Without Whipped Cream)" && d.tamano_vaso === "Short" && d.tamano_preparacion_bebida.includes("2%"));
-
-            if (cafeGrande && postrePeque) {
-                const x1 = xScale(Number(cafeGrande['Calories (Cal)']));
-                const y1 = yScale(Number(cafeGrande.azucar_pct));
-                const x2 = xScale(Number(postrePeque['Calories (Cal)']));
-                const y2 = yScale(Number(postrePeque.azucar_pct));
-
-            }
-
             // --- FUNCIÓN CENTRAL DE FILTRADO COMBINADO ---
             function esVisible(d) {
                 const coincideTexto = d.Bebida.toLowerCase().includes(textoBusqueda);
                 const coincideCat = filtroCategoria ? d.Categoria_bebida === filtroCategoria : true;
-                const coincideTam = filtroTamano ? d.tamano_vaso === filtroTamano : true;
+                const coincideTam = (filtroTamano && modoVista === 'todas') ? d.tamano_vaso === filtroTamano : true;
                 return coincideTexto && coincideCat && coincideTam;
             }
 
             function actualizarVistaFiltros() {
                 bubbles.transition().duration(400)
                     .style("opacity", d => {
-                        if (bebidaEnFoco) return d.Bebida === bebidaEnFoco ? 1 : 0.02; // MODO FOCO Aisla la bebida
+                        if (bebidaEnFoco) return d.Bebida === bebidaEnFoco ? 1 : 0.02; // MODO FOCO 
                         if (!esVisible(d)) return 0.02; // Oculta si no pasa los filtros
-                        if (filtroCategoria || filtroTamano || textoBusqueda !== "") return 1; // Brilla si hay filtro activo
-                        return OPACIDAD_BASE; // Vuelve a la base si no hay nada
+                        if (filtroCategoria || (filtroTamano && modoVista === 'todas') || textoBusqueda !== "") return 1; 
+                        return OPACIDAD_BASE; 
                     })
                     .style("pointer-events", d => {
                         if (bebidaEnFoco) return d.Bebida === bebidaEnFoco ? "all" : "none";
                         return esVisible(d) ? "all" : "none";
                     })
-                    .attr("fill", d => bebidaEnFoco ? colorScaleLeche(d.tipo_leche) : colorScaleCat(d.Categoria_bebida)); // Color Leche solo en Foco
-
-                annotationGroup.transition().duration(400).style("opacity", bebidaEnFoco ? 0 : 1);
+                    .attr("fill", d => bebidaEnFoco ? colorScaleLeche(d.tipo_leche) : colorScaleCat(d.Categoria_bebida));
             }
 
             document.addEventListener('actualizarViz', actualizarVistaFiltros);
@@ -278,9 +340,8 @@
             bubbles.on("mouseover", function(event, d) {
                 bubbles.style("opacity", b => {
                     if (bebidaEnFoco) return b.Bebida === bebidaEnFoco ? (b === d ? 1 : 0.4) : 0.02;
-
                     if (!esVisible(b)) return 0.02;
-                    if (filtroCategoria || filtroTamano || textoBusqueda !== "") return b === d ? 1 : 0.4;
+                    if (filtroCategoria || (filtroTamano && modoVista === 'todas') || textoBusqueda !== "") return b === d ? 1 : 0.4;
                     return b === d ? 1 : 0.1;
                 });
                 
@@ -293,7 +354,7 @@
                     <div class="title">${d.Bebida}</div>
                     <div class="detail">Tamaño: <span style="color:#00d2ff">${d.tamano_vaso} (${d.volumen_ml}ml)</span></div>
                     <div class="detail">Leche: <span style="color:${bebidaEnFoco ? colorScaleLeche(d.tipo_leche) : '#fff'}">${d.tipo_leche}</span></div>
-                    <div class="tooltip-hint" style="margin-top: 8px;">👆 Haz clic para aislar esta bebida</div>
+                    <div class="tooltip-hint" style="margin-top: 8px;">👆 Haz clic para aislar los tipos de leche</div>
                 `).style("left", xPos + "px").style("top", yPos + "px");
             })
             .on("mouseout", function(event, d) {
@@ -302,7 +363,7 @@
                 bubbles.style("opacity", b => {
                     if (bebidaEnFoco) return b.Bebida === bebidaEnFoco ? 1 : 0.02;
                     if (!esVisible(b)) return 0.02; 
-                    if (filtroCategoria || filtroTamano || textoBusqueda !== "") return 1; 
+                    if (filtroCategoria || (filtroTamano && modoVista === 'todas') || textoBusqueda !== "") return 1; 
                     return OPACIDAD_BASE; 
                 });
                 tooltip.style("opacity", 0);
@@ -316,7 +377,7 @@
                 mostrarDetalle(d, colorScaleLeche(d.tipo_leche));
             });
 
-            // --- LEYENDA CATEGORÍAS (Interactiva) ---
+            // --- LEYENDA CATEGORÍAS ---
             const legendContainer = d3.select("#legend-container");
             legendContainer.html(""); 
             
@@ -324,7 +385,7 @@
                 const legendItem = legendContainer.append("div").attr("class", "legend-item")
                     .on("mouseover", () => { 
                         if (!filtroCategoria && !bebidaEnFoco) {
-                            bubbles.style("opacity", d => (d.Categoria_bebida === cat && (filtroTamano ? d.tamano_vaso === filtroTamano : true) && d.Bebida.toLowerCase().includes(textoBusqueda)) ? 1 : 0.02); 
+                            bubbles.style("opacity", d => (d.Categoria_bebida === cat && (filtroTamano && modoVista === 'todas' ? d.tamano_vaso === filtroTamano : true) && d.Bebida.toLowerCase().includes(textoBusqueda)) ? 1 : 0.02); 
                         }
                     })
                     .on("mouseout", () => { if (!filtroCategoria && !bebidaEnFoco) actualizarVistaFiltros(); })
@@ -345,46 +406,49 @@
                 legendItem.append("div").attr("class", "legend-text").text(cat);
             });
 
-            // --- LEYENDA TAMAÑOS (Interactiva - NUEVO) ---
+            // --- LEYENDA TAMAÑOS ---
             const sizeLegendContainer = d3.select("#size-legend-container");
             sizeLegendContainer.html(""); 
             const maxDiametro = sizeScale(591) * 2; 
             
-            // Extraer y ordenar tamaños directamente desde los datos reales
-            const uniqueSizes = Array.from(new Set(data.map(d => d.tamano_vaso)));
-            uniqueSizes.sort((a,b) => (data.find(d => d.tamano_vaso === a).volumen_ml || 0) - (data.find(d => d.tamano_vaso === b).volumen_ml || 0));
-
-            uniqueSizes.forEach(tam => {
-                const sampleData = data.find(d => d.tamano_vaso === tam);
-                const diametro = sizeScale(sampleData.volumen_ml) * 2;
+            tamanosRef.forEach(t => {
+                const diametro = sizeScale(t.ml) * 2;
                 
-                const item = sizeLegendContainer.append("div").attr("class", "size-item")
-                    .on("mouseover", function() {
-                        if (!filtroTamano && !bebidaEnFoco) {
-                            bubbles.style("opacity", d => (d.tamano_vaso === tam && (filtroCategoria ? d.Categoria_bebida === filtroCategoria : true) && d.Bebida.toLowerCase().includes(textoBusqueda)) ? 1 : 0.02);
-                        }
-                    })
-                    .on("mouseout", function() { if(!filtroTamano && !bebidaEnFoco) actualizarVistaFiltros(); })
-                    .on("click", function() {
-                        if(bebidaEnFoco) return;
-                        if (filtroTamano === tam) {
-                            filtroTamano = null;
-                            d3.selectAll(".size-item").style("background-color", "transparent");
-                        } else {
-                            filtroTamano = tam;
-                            d3.selectAll(".size-item").style("background-color", "transparent");
-                            d3.select(this).style("background-color", "#333");
-                        }
-                        actualizarVistaFiltros();
-                    });
+                const item = sizeLegendContainer.append("div")
+                    .attr("class", modoVista === 'promedios' ? "size-item disabled" : "size-item");
+
+                if(modoVista === 'todas') {
+                    item.on("mouseover", function() {
+                            if (!filtroTamano && !bebidaEnFoco) {
+                                bubbles.style("opacity", d => (d.tamano_vaso === t.nombre && (filtroCategoria ? d.Categoria_bebida === filtroCategoria : true) && d.Bebida.toLowerCase().includes(textoBusqueda)) ? 1 : 0.02);
+                            }
+                        })
+                        .on("mouseout", function() { if(!filtroTamano && !bebidaEnFoco) actualizarVistaFiltros(); })
+                        .on("click", function() {
+                            if(bebidaEnFoco) return;
+                            if (filtroTamano === t.nombre) {
+                                filtroTamano = null;
+                                d3.selectAll(".size-item").style("background-color", "transparent");
+                            } else {
+                                filtroTamano = t.nombre;
+                                d3.selectAll(".size-item").style("background-color", "transparent");
+                                d3.select(this).style("background-color", "#333");
+                            }
+                            actualizarVistaFiltros();
+                        });
+                }
 
                 item.append("div").attr("class", "size-circle")
                     .style("width", diametro+"px").style("height", diametro+"px")
                     .style("margin-left", (maxDiametro - diametro)/2 + "px").style("margin-right", "15px");
-                item.append("div").attr("class", "size-text").text(`${tam} (${sampleData.volumen_ml} ml)`);
+                item.append("div").attr("class", "size-text").text(`${t.nombre} (${t.ml} ml)`);
             });
 
-            // Buscador general
+            if (modoVista === 'promedios') {
+                sizeLegendContainer.append("div").style("font-size", "0.75em").style("color", "#ff6b6b").style("margin-top", "10px").style("text-align", "center")
+                .text("El filtro por tamaño está desactivado en la vista de Promedios.");
+            }
+
             d3.select("#buscador").on("input", function() {
                 textoBusqueda = this.value.toLowerCase();
                 if(!bebidaEnFoco) actualizarVistaFiltros();
