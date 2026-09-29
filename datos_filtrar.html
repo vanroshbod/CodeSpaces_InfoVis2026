@@ -39,6 +39,14 @@
         .btn-toggle:hover { background-color: #333; color: #fff; }
         .btn-toggle.active { background-color: #00d2ff; color: #000; font-weight: bold; border-color: #00d2ff; }
 
+        /* Dropdown custom */
+        .custom-select {
+            padding: 8px; background-color: #222; color: #fff; border: 1px solid #444; 
+            border-radius: 4px; font-size: 0.85em; outline: none; width: 100%;
+            transition: border-color 0.2s;
+        }
+        .custom-select:focus { border-color: #00d2ff; }
+
         /* Buscador */
         .buscador-container { margin-bottom: 15px; }
         #buscador { 
@@ -97,6 +105,8 @@
         .axis-label { fill: #ccc; font-size: 12px; font-weight: bold; }
         .domain, .tick line { stroke: #333; }
         .tick text { fill: #999; }
+        .who-line { stroke-dasharray: 5,5; stroke-width: 1.5; }
+        .who-label { font-size: 11px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -112,12 +122,37 @@
                     <button id="btn-vista-promedios" class="btn-toggle">Promedios</button>
                 </div>
 
-                <div class="buscador-container">
+                <!-- SELECTOR DE EJE X -->
+                <div class="control-group" style="flex-direction: column; gap: 5px; margin-top: 5px;">
+                    <label style="font-size: 0.85em; color: #888;">Analizar en Eje X:</label>
+                    <select id="select-eje-x" class="custom-select">
+                        <option value="Calories (Cal)">Calorías Totales (Cal)</option>
+                        <option value="Caffeine_num">Cafeína (mg) - "Energía"</option>
+                        <option value="Protein (g)">Proteínas (g) - "Nutrición"</option>
+                        <option value="Total Fat (g)">Grasas Totales (g)</option>
+                    </select>
+                </div>
+
+                <!-- SELECTOR DE EJE Y -->
+                <div class="instrucciones" style="margin-bottom: 5px; margin-top: 10px;">Métrica de Azúcar (Eje Y):</div>
+                <div class="control-group">
+                    <button id="btn-azucar-pct" class="btn-toggle active">Concentración (%)</button>
+                    <button id="btn-azucar-gr" class="btn-toggle">Gramos Totales</button>
+                </div>
+
+                <!-- MODO DE COLOR (SEMÁFORO) -->
+                <div class="instrucciones" style="margin-bottom: 5px; margin-top: 5px;">Codificación de Color:</div>
+                <div class="control-group">
+                    <button id="btn-color-cat" class="btn-toggle active">Categoría</button>
+                    <button id="btn-color-sem" class="btn-toggle">Alerta Nutricional</button>
+                </div>
+
+                <div class="buscador-container" style="margin-top: 10px;">
                     <input type="text" id="buscador" placeholder="🔍 Buscar bebida por nombre...">
                 </div>
 
                 <div class="instrucciones">
-                    <strong>Pasa el mouse</strong> o <strong>haz clic</strong> para filtrar categorías. <br>👆 <strong>Clic en burbuja</strong> para aislar su familia.
+                    <strong>Pasa el mouse</strong> o <strong>haz clic</strong> para filtrar. <br>👆 <strong>Clic en burbuja</strong> para aislar su leche.
                 </div>
                 <div id="legend-container"></div>
                 
@@ -131,7 +166,7 @@
                 <h2>Análisis Específico</h2>
                 <div id="detalle-contenido"></div>
                 <div class="instrucciones" style="margin-top: 15px; text-align: center; color: #00d2ff;">
-                    👆 Selecciona otras burbujas iluminadas en el gráfico para comparar los tipos de leche.
+                    👆 Selecciona otras burbujas iluminadas para comparar.
                 </div>
                 <div class="btn-volver" onclick="salirFoco()">← Restablecer Universo Completo</div>
             </div>
@@ -147,13 +182,22 @@
         let datosOriginales = [];
         let datosPromedios = [];
         let modoVista = 'todas'; // 'todas' o 'promedios'
+        let metricaAzucar = 'pct'; // 'pct' o 'gr'
+        let variableX = 'Calories (Cal)'; // Variable seleccionada para Eje X
+        let modoColor = 'categoria'; // 'categoria' o 'semaforo'
         
         let filtroCategoria = null; 
         let filtroTamano = null;
         let textoBusqueda = "";
         let bebidaEnFoco = null; 
 
-        // TAMAÑOS DE REFERENCIA
+        const nombresVariables = {
+            'Calories (Cal)': 'Calorías',
+            'Caffeine_num': 'Cafeína (mg)',
+            'Protein (g)': 'Proteínas (g)',
+            'Total Fat (g)': 'Grasas Totales (g)'
+        };
+
         const tamanosRef = [
             { nombre: "Short", ml: 236 },
             { nombre: "Tall", ml: 354 },
@@ -161,9 +205,33 @@
             { nombre: "Venti", ml: 591 }
         ];
 
+        // ESCALAS DE COLOR
+        let categoriasUnicas = [];
+        let colorScaleCat;
+        const colorScaleLeche = d3.scaleOrdinal()
+            .domain(["Nonfat Milk", "Soymilk", "2% Milk", "Whole Milk", "Coconutmilk", "Almondmilk"])
+            .range(["#48dbfb", "#feca57", "#ff6b6b", "#1dd1a1", "#c8d6e5", "#ff9ff3"]);
+
+        // FUNCIÓN CENTRAL PARA DETERMINAR EL COLOR
+        function getColor(d) {
+            if (bebidaEnFoco && d.Bebida === bebidaEnFoco) return colorScaleLeche(d.tipo_leche);
+            
+            if (modoColor === 'semaforo') {
+                const azucar = Number(d['Sugars (g)']);
+                if (azucar > 50) return "#ff4757"; // Rojo (Peligro)
+                if (azucar > 25) return "#ffa502"; // Amarillo (Moderado/Límite)
+                return "#2ed573"; // Verde (Bien)
+            }
+            
+            return colorScaleCat(d.Categoria_bebida);
+        }
+
         function mostrarDetalle(datosBebida, colorFondo) {
             document.getElementById('vista-leyenda').classList.remove('active');
             document.getElementById('vista-detalle').classList.add('active');
+
+            const gramosAzucar = Number(datosBebida['Sugars (g)']);
+            const cucharaditas = (gramosAzucar / 4).toFixed(1);
 
             const cont = document.getElementById('detalle-contenido');
             let htmlFicha = `
@@ -175,9 +243,13 @@
                     <tbody>
                         <tr><th>Tamaño Vaso</th><td><span style="color:#00d2ff">${datosBebida.tamano_vaso} (${datosBebida.volumen_ml} ml)</span></td></tr>
                         <tr><th>Calorías</th><td>${datosBebida['Calories (Cal)']} Cal</td></tr>
+                        <tr><th>Proteínas</th><td>${datosBebida['Protein (g)']} g</td></tr>
                         <tr><th>Grasas Totales</th><td>${datosBebida['Total Fat (g)']} g</td></tr>
-                        <tr><th>Azúcar Normalizada</th><td><span style="color:#ff6b6b">${Number(datosBebida.azucar_pct).toFixed(2)}%</span></td></tr>
                         <tr><th>Cafeína</th><td>${datosBebida.Caffeine_num} mg</td></tr>
+                        <tr><td colspan="2" style="border:none; padding-top:15px;"></td></tr>
+                        <tr><th>Azúcar %</th><td><span style="color:#ff6b6b">${Number(datosBebida.azucar_pct).toFixed(2)}%</span></td></tr>
+                        <tr><th>Azúcar Total</th><td><span style="color:#ff6b6b">${gramosAzucar.toFixed(1)} g</span></td></tr>
+                        <tr><th>Azúcar Equivalente</th><td><span style="color:#fff">${cucharaditas} cucharaditas 🥄</span></td></tr>
                     </tbody>
                 </table>
             `;
@@ -203,11 +275,14 @@
                     tipo_leche: first.tipo_leche,
                     tamano_vaso: "Promedio",
                     tamano_preparacion_bebida: "Promedio (" + first.tipo_leche + ")",
-                    'Calories (Cal)': d3.mean(values, d => Number(d['Calories (Cal)'])).toFixed(1),
-                    azucar_pct: d3.mean(values, d => Number(d.azucar_pct)),
-                    volumen_ml: Math.round(d3.mean(values, d => Number(d.volumen_ml))),
-                    'Total Fat (g)': d3.mean(values, d => Number(d['Total Fat (g)'])).toFixed(1),
-                    Caffeine_num: d3.mean(values, d => Number(d.Caffeine_num)).toFixed(1)
+                    // Los ( ... || 0) evitan el colapso si los datos vienen vacíos en el JSON
+                    'Calories (Cal)': (d3.mean(values, d => Number(d['Calories (Cal)'])) || 0).toFixed(1),
+                    'Protein (g)': (d3.mean(values, d => Number(d['Protein (g)'])) || 0).toFixed(1),
+                    'Total Fat (g)': (d3.mean(values, d => Number(d['Total Fat (g)'])) || 0).toFixed(1),
+                    Caffeine_num: (d3.mean(values, d => Number(d.Caffeine_num)) || 0).toFixed(1),
+                    azucar_pct: (d3.mean(values, d => Number(d.azucar_pct)) || 0),
+                    'Sugars (g)': (d3.mean(values, d => Number(d['Sugars (g)'])) || 0), 
+                    volumen_ml: Math.round(d3.mean(values, d => Number(d.volumen_ml)) || 0)
                 });
             });
             return promedios;
@@ -224,106 +299,236 @@
                 return response.json();
             })
             .then(data => {
-                // Limpieza inicial
                 data.forEach(d => {
                     let leche = d.tamano_preparacion_bebida.replace(d.tamano_vaso, '').trim();
                     d.tipo_leche = leche !== "" ? leche : "Estándar / Sin Leche";
+                    // Asegurar que existan los gramos de azúcar (cálculo por si falta)
+                    d['Sugars (g)'] = d['Sugars (g)'] !== undefined ? d['Sugars (g)'] : (d.azucar_pct * d.volumen_ml / 100);
                 });
                 
                 datosOriginales = data.filter(d => d.Bebida && d.Categoria_bebida);
                 datosPromedios = generarPromedios(datosOriginales);
                 
+                categoriasUnicas = Array.from(new Set(datosOriginales.map(d => d.Categoria_bebida)));
+                colorScaleCat = d3.scaleOrdinal().domain(categoriasUnicas).range(d3.schemeSet3);
+
+                // Inicializar SVG base
+                const container = document.getElementById('viz-container');
+                const svg = d3.select("#viz-container").append("svg")
+                    .attr("width", container.clientWidth).attr("height", container.clientHeight);
+                
+                svg.append("g").attr("class", "who-group").style("opacity", 0); // Grupo Líneas OMS al fondo
+                svg.append("g").attr("class", "x-axis");
+                svg.append("g").attr("class", "y-axis");
+                svg.append("text").attr("class", "x-axis-label");
+                svg.append("text").attr("class", "y-axis-label");
+                svg.append("g").attr("class", "bubble-group");
+
                 dibujarVisualizacion(datosOriginales);
             })
             .catch(error => {
-                console.error("Error:", error);
-                alert("Error al cargar JSON. Verifica la carpeta 'data'.");
-            });
+            console.error("ERROR DETALLADO:", error);
+            alert("El error real es:\n" + error.message + "\n\nPresiona F12 y revisa la Consola para más detalles.");
+        });
 
-        // Eventos de los botones de agregación
+        // EVENTOS DE LOS BOTONES
+        function reDibujar() { dibujarVisualizacion(modoVista === 'todas' ? datosOriginales : datosPromedios); }
+
         d3.select("#btn-vista-todas").on("click", function() {
-            if(modoVista === 'todas') return;
-            modoVista = 'todas';
-            filtroTamano = null; // Reset filtro
-            d3.selectAll(".btn-toggle").classed("active", false);
-            d3.select(this).classed("active", true);
-            salirFoco();
-            dibujarVisualizacion(datosOriginales);
+            modoVista = 'todas'; filtroTamano = null; 
+            d3.select("#btn-vista-todas").classed("active", true);
+            d3.select("#btn-vista-promedios").classed("active", false);
+            salirFoco(); reDibujar();
         });
-
         d3.select("#btn-vista-promedios").on("click", function() {
-            if(modoVista === 'promedios') return;
-            modoVista = 'promedios';
-            filtroTamano = null; // Reset filtro
-            d3.selectAll(".btn-toggle").classed("active", false);
-            d3.select(this).classed("active", true);
-            salirFoco();
-            dibujarVisualizacion(datosPromedios);
+            modoVista = 'promedios'; filtroTamano = null; 
+            d3.select("#btn-vista-todas").classed("active", false);
+            d3.select("#btn-vista-promedios").classed("active", true);
+            salirFoco(); reDibujar();
+        });
+        d3.select("#btn-azucar-pct").on("click", function() {
+            metricaAzucar = 'pct';
+            d3.select("#btn-azucar-pct").classed("active", true);
+            d3.select("#btn-azucar-gr").classed("active", false);
+            reDibujar();
+        });
+        d3.select("#btn-azucar-gr").on("click", function() {
+            metricaAzucar = 'gr';
+            d3.select("#btn-azucar-gr").classed("active", true);
+            d3.select("#btn-azucar-pct").classed("active", false);
+            reDibujar();
+        });
+        d3.select("#select-eje-x").on("change", function() {
+            variableX = this.value; reDibujar();
+        });
+        d3.select("#btn-color-cat").on("click", function() {
+            modoColor = 'categoria';
+            d3.select("#btn-color-cat").classed("active", true);
+            d3.select("#btn-color-sem").classed("active", false);
+            reDibujar();
+        });
+        d3.select("#btn-color-sem").on("click", function() {
+            modoColor = 'semaforo';
+            d3.select("#btn-color-sem").classed("active", true);
+            d3.select("#btn-color-cat").classed("active", false);
+            reDibujar();
         });
 
+        // MOTOR PRINCIPAL DE VISUALIZACIÓN
         function dibujarVisualizacion(data) {
             const container = document.getElementById('viz-container');
             const width = container.clientWidth;
             const height = container.clientHeight;
             const margin = { top: 30, right: 80, bottom: 60, left: 70 };
 
-            d3.select("#viz-container svg").remove();
-            const svg = d3.select("#viz-container").append("svg").attr("width", width).attr("height", height);
+            const svg = d3.select("#viz-container svg").attr("width", width).attr("height", height);
 
-            data.sort((a, b) => (b.volumen_ml || 0) - (a.volumen_ml || 0));
+            data.sort((a, b) => (b.volumen_ml || 0) - (a.volumen_ml || 0)); // Burbujas pequeñas al frente
 
-            // Ejes estáticos basados en el dataset original para no perder la referencia espacial
-            const maxCalGlobal = d3.max(datosOriginales, d => Number(d['Calories (Cal)']) || 0);
-            const maxAzucarGlobal = d3.max(datosOriginales, d => Number(d.azucar_pct) || 0);
+            const getAzucar = d => metricaAzucar === 'pct' ? Number(d.azucar_pct) : Number(d['Sugars (g)']);
 
-            const xScale = d3.scaleLinear().domain([-10, maxCalGlobal + 30]).range([margin.left, width - margin.right]);
-            const yScale = d3.scaleLinear().domain([-2, maxAzucarGlobal + 3]).range([height - margin.bottom, margin.top]);
+            // Escalas estáticas para que la transición sea contextual respecto al dataset global
+            const maxValX = d3.max(datosOriginales, d => Number(d[variableX]) || 0);
+            const maxValY = d3.max(datosOriginales, d => getAzucar(d) || 0);
+
+            const xScale = d3.scaleLinear().domain([-maxValX * 0.05, maxValX * 1.05]).range([margin.left, width - margin.right]);
+            const yScale = d3.scaleLinear().domain([-2, maxValY * 1.05]).range([height - margin.bottom, margin.top]);
             const sizeScale = d3.scalePow().exponent(1.5).domain([30, 591]).range([8, 20]); 
+            
+            const freqScale = d3.scaleLinear().domain([0, maxValX]).range([800, 150]); 
+            const durationScale = d3.scaleLinear().domain([0, maxValY]).range([0.1, 2.5]);
 
-            const categorias = Array.from(new Set(datosOriginales.map(d => d.Categoria_bebida)));
-            const colorScaleCat = d3.scaleOrdinal().domain(categorias).range(d3.schemeSet3);
-
-            const leches = Array.from(new Set(datosOriginales.map(d => d.tipo_leche)));
-            const colorScaleLeche = d3.scaleOrdinal().domain(leches)
-                .range(["#48dbfb", "#feca57", "#ff6b6b", "#1dd1a1", "#c8d6e5", "#ff9ff3"]);
-
-            const freqScale = d3.scaleLinear().domain([0, 500]).range([800, 150]); 
-            const durationScale = d3.scaleLinear().domain([0, 15]).range([0.1, 2.5]);
-
+            // EJES - Actualización animada
+            const yAxisFormat = metricaAzucar === 'pct' ? "%" : "g";
             const xAxis = d3.axisBottom(xScale).tickFormat(d => d);
-            const yAxis = d3.axisLeft(yScale).tickFormat(d => d + "%");
+            const yAxis = d3.axisLeft(yScale).tickFormat(d => d + yAxisFormat);
 
-            svg.append("g").attr("transform", `translate(0,${height - margin.bottom})`).call(xAxis).style("font-size", "11px");
-            svg.append("text").attr("class", "axis-label").attr("x", width / 2).attr("y", height - 20).style("text-anchor", "middle").text("Calorías Totales (Cal)");
+            svg.select(".x-axis").transition().duration(800)
+                .attr("transform", `translate(0,${height - margin.bottom})`).call(xAxis).style("font-size", "11px");
+            svg.select(".y-axis").transition().duration(800)
+                .attr("transform", `translate(${margin.left},0)`).call(yAxis).style("font-size", "11px");
 
-            svg.append("g").attr("transform", `translate(${margin.left},0)`).call(yAxis).style("font-size", "11px");
-            svg.append("text").attr("class", "axis-label").attr("transform", "rotate(-90)").attr("x", -height / 2).attr("y", 20).style("text-anchor", "middle").text("Concentración de Azúcar Normalizada (g/100ml)");
+            svg.select(".x-axis-label").transition().duration(800)
+                .attr("x", width / 2).attr("y", height - 20).style("text-anchor", "middle").text(nombresVariables[variableX]);
+            
+            const yAxisTitle = metricaAzucar === 'pct' ? "Concentración de Azúcar Normalizada (g/100ml)" : "Azúcar Total (gramos)";
+            svg.select(".y-axis-label").transition().duration(800)
+                .attr("transform", "rotate(-90)").attr("x", -height / 2).attr("y", 20).style("text-anchor", "middle").text(yAxisTitle);
 
-            const OPACIDAD_BASE = modoVista === 'todas' ? 0.4 : 0.7; // Más visible si hay promedios (menos burbujas)
-            const bubbleGroup = svg.append("g");
+            // LÍNEAS DE LA OMS (Aparecen solo si la métrica es en Gramos)
+            const whoGroup = svg.select(".who-group");
+            if (metricaAzucar === 'gr') {
+                if (whoGroup.selectAll("line").empty()) {
+                    whoGroup.append("line").attr("class", "who-line line-25").attr("stroke", "#ffa502");
+                    whoGroup.append("line").attr("class", "who-line line-50").attr("stroke", "#ff4757");
+                    whoGroup.append("text").attr("class", "who-label text-25").attr("fill", "#ffa502").text("OMS Ideal (25g)");
+                    whoGroup.append("text").attr("class", "who-label text-50").attr("fill", "#ff4757").text("OMS Límite (50g)");
+                }
+                whoGroup.transition().duration(800).style("opacity", 1);
+                
+                whoGroup.select(".line-25").transition().duration(800)
+                    .attr("x1", margin.left).attr("x2", width - margin.right)
+                    .attr("y1", yScale(25)).attr("y2", yScale(25));
+                whoGroup.select(".text-25").transition().duration(800)
+                    .attr("x", width - margin.right - 10).attr("y", yScale(25) - 5).style("text-anchor", "end");
+                
+                whoGroup.select(".line-50").transition().duration(800)
+                    .attr("x1", margin.left).attr("x2", width - margin.right)
+                    .attr("y1", yScale(50)).attr("y2", yScale(50));
+                whoGroup.select(".text-50").transition().duration(800)
+                    .attr("x", width - margin.right - 10).attr("y", yScale(50) - 5).style("text-anchor", "end");
+            } else {
+                whoGroup.transition().duration(500).style("opacity", 0);
+            }
+
+            const OPACIDAD_BASE = modoVista === 'todas' ? 0.4 : 0.7; 
             const tooltip = d3.select("#tooltip");
 
-            const bubbles = bubbleGroup.selectAll("circle").data(data).enter().append("circle").attr("class", "bubble")
-                .attr("cx", d => xScale(Number(d['Calories (Cal)']) || 0))
-                .attr("cy", d => yScale(Number(d.azucar_pct) || 0))
-                .attr("r", d => sizeScale(Number(d.volumen_ml) || 473)) 
-                .attr("fill", d => colorScaleCat(d.Categoria_bebida)) 
-                .style("opacity", OPACIDAD_BASE)
-                .attr("stroke", "#000").attr("stroke-width", 0.5);
+            // BURBUJAS - Data Binding con Clave Única
+            const bubbleSelection = svg.select(".bubble-group").selectAll(".bubble")
+                .data(data, d => d.Bebida + "|" + d.tamano_vaso + "|" + d.tipo_leche);
 
-            // --- FUNCIÓN CENTRAL DE FILTRADO COMBINADO ---
+            // Nuevas burbujas (enter)
+            const bubblesEnter = bubbleSelection.enter().append("circle").attr("class", "bubble")
+                .attr("cx", d => xScale(Number(d[variableX]) || 0))
+                .attr("cy", d => yScale(getAzucar(d) || 0))
+                .attr("r", 0) // Empiezan en 0 para animar la aparición
+                .attr("stroke", "#000").attr("stroke-width", 0.5)
+                .style("opacity", OPACIDAD_BASE);
+
+            // Eventos solo se ligan una vez en el Enter
+            bubblesEnter
+                .on("mouseover", function(event, d) {
+                    svg.selectAll(".bubble").style("opacity", b => {
+                        if (bebidaEnFoco) return b.Bebida === bebidaEnFoco ? (b === d ? 1 : 0.4) : 0.02;
+                        if (!esVisible(b)) return 0.02;
+                        if (filtroCategoria || (filtroTamano && modoVista === 'todas') || textoBusqueda !== "") return b === d ? 1 : 0.4;
+                        return b === d ? 1 : 0.1;
+                    });
+                    
+                    d3.select(this).style("opacity", 1).attr("stroke", "#fff").attr("stroke-width", 2)
+                        .attr("r", sizeScale(Number(d.volumen_ml) || 473) * 1.3); 
+
+                    let xPos = event.pageX + 15, yPos = event.pageY - 20;
+                    if(xPos + 250 > window.innerWidth) xPos = event.pageX - 265;
+
+                    const textoAzucar = metricaAzucar === 'pct' ? Number(d.azucar_pct).toFixed(2) + '%' : Number(d['Sugars (g)']).toFixed(1) + ' g';
+                    const cucharaditas = (Number(d['Sugars (g)']) / 4).toFixed(1);
+                    const valX = Number(d[variableX]).toFixed(1);
+
+                    tooltip.style("opacity", 1).html(`
+                        <div class="title">${d.Bebida}</div>
+                        <div class="detail">Tamaño: <span style="color:#00d2ff">${d.tamano_vaso} (${d.volumen_ml}ml)</span></div>
+                        <div class="detail">Leche: <span style="color:${bebidaEnFoco ? colorScaleLeche(d.tipo_leche) : '#fff'}">${d.tipo_leche}</span></div>
+                        <div class="detail">Azúcar: <span style="color:#ff6b6b">${textoAzucar}</span> (${cucharaditas} 🥄)</div>
+                        <div class="detail">${nombresVariables[variableX]}: <span style="color:#feca57">${valX}</span></div>
+                        <div class="tooltip-hint" style="margin-top: 8px;">👆 Haz clic para aislar los tipos de leche</div>
+                    `).style("left", xPos + "px").style("top", yPos + "px");
+                })
+                .on("mouseout", function(event, d) {
+                    d3.select(this).attr("stroke", "#000").attr("stroke-width", 0.5).attr("r", sizeScale(Number(d.volumen_ml) || 473));
+                    svg.selectAll(".bubble").style("opacity", b => {
+                        if (bebidaEnFoco) return b.Bebida === bebidaEnFoco ? 1 : 0.02;
+                        if (!esVisible(b)) return 0.02; 
+                        if (filtroCategoria || (filtroTamano && modoVista === 'todas') || textoBusqueda !== "") return 1; 
+                        return OPACIDAD_BASE; 
+                    });
+                    tooltip.style("opacity", 0);
+                })
+                .on("click", async function(event, d) {
+                    if (Tone.context.state !== 'running') await Tone.start();
+                    synth.triggerAttackRelease(freqScale(Number(d[variableX]) || 0), durationScale(getAzucar(d)));
+                    
+                    bebidaEnFoco = d.Bebida;
+                    document.dispatchEvent(new CustomEvent('actualizarViz'));
+                    mostrarDetalle(d, colorScaleLeche(d.tipo_leche));
+                });
+
+            // Merge Enter + Update con Transición
+            const bubbles = bubblesEnter.merge(bubbleSelection);
+            bubbles.transition().duration(800)
+                .attr("cx", d => xScale(Number(d[variableX]) || 0))
+                .attr("cy", d => yScale(getAzucar(d) || 0))
+                .attr("r", d => sizeScale(Number(d.volumen_ml) || 473))
+                .attr("fill", d => getColor(d));
+
+            // Salida de burbujas (exit)
+            bubbleSelection.exit().transition().duration(300).attr("r", 0).remove();
+
+            // FUNCIÓN CENTRAL DE FILTRADO COMBINADO
             function esVisible(d) {
                 const coincideTexto = d.Bebida.toLowerCase().includes(textoBusqueda);
                 const coincideCat = filtroCategoria ? d.Categoria_bebida === filtroCategoria : true;
                 const coincideTam = (filtroTamano && modoVista === 'todas') ? d.tamano_vaso === filtroTamano : true;
+                if(modoColor === 'semaforo' && filtroCategoria && d.Categoria_bebida !== filtroCategoria) return false;
                 return coincideTexto && coincideCat && coincideTam;
             }
 
             function actualizarVistaFiltros() {
-                bubbles.transition().duration(400)
+                svg.selectAll(".bubble").transition().duration(400)
                     .style("opacity", d => {
-                        if (bebidaEnFoco) return d.Bebida === bebidaEnFoco ? 1 : 0.02; // MODO FOCO 
-                        if (!esVisible(d)) return 0.02; // Oculta si no pasa los filtros
+                        if (bebidaEnFoco) return d.Bebida === bebidaEnFoco ? 1 : 0.02; 
+                        if (!esVisible(d)) return 0.02; 
                         if (filtroCategoria || (filtroTamano && modoVista === 'todas') || textoBusqueda !== "") return 1; 
                         return OPACIDAD_BASE; 
                     })
@@ -331,80 +536,52 @@
                         if (bebidaEnFoco) return d.Bebida === bebidaEnFoco ? "all" : "none";
                         return esVisible(d) ? "all" : "none";
                     })
-                    .attr("fill", d => bebidaEnFoco ? colorScaleLeche(d.tipo_leche) : colorScaleCat(d.Categoria_bebida));
+                    .attr("fill", d => getColor(d));
             }
 
             document.addEventListener('actualizarViz', actualizarVistaFiltros);
 
-            // --- HOVER INTELIGENTE ---
-            bubbles.on("mouseover", function(event, d) {
-                bubbles.style("opacity", b => {
-                    if (bebidaEnFoco) return b.Bebida === bebidaEnFoco ? (b === d ? 1 : 0.4) : 0.02;
-                    if (!esVisible(b)) return 0.02;
-                    if (filtroCategoria || (filtroTamano && modoVista === 'todas') || textoBusqueda !== "") return b === d ? 1 : 0.4;
-                    return b === d ? 1 : 0.1;
-                });
-                
-                d3.select(this).style("opacity", 1).attr("stroke", "#fff").attr("stroke-width", 2).attr("r", sizeScale(Number(d.volumen_ml) || 473) * 1.3); 
-
-                let xPos = event.pageX + 15, yPos = event.pageY - 20;
-                if(xPos + 250 > window.innerWidth) xPos = event.pageX - 265;
-
-                tooltip.style("opacity", 1).html(`
-                    <div class="title">${d.Bebida}</div>
-                    <div class="detail">Tamaño: <span style="color:#00d2ff">${d.tamano_vaso} (${d.volumen_ml}ml)</span></div>
-                    <div class="detail">Leche: <span style="color:${bebidaEnFoco ? colorScaleLeche(d.tipo_leche) : '#fff'}">${d.tipo_leche}</span></div>
-                    <div class="tooltip-hint" style="margin-top: 8px;">👆 Haz clic para aislar los tipos de leche</div>
-                `).style("left", xPos + "px").style("top", yPos + "px");
-            })
-            .on("mouseout", function(event, d) {
-                d3.select(this).attr("stroke", "#000").attr("stroke-width", 0.5).attr("r", sizeScale(Number(d.volumen_ml) || 473));
-                
-                bubbles.style("opacity", b => {
-                    if (bebidaEnFoco) return b.Bebida === bebidaEnFoco ? 1 : 0.02;
-                    if (!esVisible(b)) return 0.02; 
-                    if (filtroCategoria || (filtroTamano && modoVista === 'todas') || textoBusqueda !== "") return 1; 
-                    return OPACIDAD_BASE; 
-                });
-                tooltip.style("opacity", 0);
-            })
-            .on("click", async function(event, d) {
-                if (Tone.context.state !== 'running') await Tone.start();
-                synth.triggerAttackRelease(freqScale(Number(d['Calories (Cal)'])), durationScale(Number(d.azucar_pct)));
-                
-                bebidaEnFoco = d.Bebida;
-                actualizarVistaFiltros();
-                mostrarDetalle(d, colorScaleLeche(d.tipo_leche));
-            });
-
-            // --- LEYENDA CATEGORÍAS ---
+            // --- LEYENDAS DINÁMICAS (Categoría o Semáforo) ---
             const legendContainer = d3.select("#legend-container");
             legendContainer.html(""); 
             
-            categorias.forEach(cat => {
-                const legendItem = legendContainer.append("div").attr("class", "legend-item")
-                    .on("mouseover", () => { 
-                        if (!filtroCategoria && !bebidaEnFoco) {
-                            bubbles.style("opacity", d => (d.Categoria_bebida === cat && (filtroTamano && modoVista === 'todas' ? d.tamano_vaso === filtroTamano : true) && d.Bebida.toLowerCase().includes(textoBusqueda)) ? 1 : 0.02); 
-                        }
-                    })
-                    .on("mouseout", () => { if (!filtroCategoria && !bebidaEnFoco) actualizarVistaFiltros(); })
-                    .on("click", function() {
-                        if(bebidaEnFoco) return; 
-                        if (filtroCategoria === cat) {
-                            filtroCategoria = null;
-                            d3.selectAll(".legend-item").style("background-color", "transparent");
-                        } else {
-                            filtroCategoria = cat;
-                            d3.selectAll(".legend-item").style("background-color", "transparent"); 
-                            d3.select(this).style("background-color", "#333"); 
-                        }
-                        actualizarVistaFiltros();
-                    });
-
-                legendItem.append("div").attr("class", "color-box").style("background-color", colorScaleCat(cat));
-                legendItem.append("div").attr("class", "legend-text").text(cat);
-            });
+            if (modoColor === 'categoria') {
+                categoriasUnicas.forEach(cat => {
+                    const legendItem = legendContainer.append("div").attr("class", "legend-item")
+                        .on("mouseover", () => { 
+                            if (!filtroCategoria && !bebidaEnFoco) {
+                                svg.selectAll(".bubble").style("opacity", d => (d.Categoria_bebida === cat && (filtroTamano && modoVista === 'todas' ? d.tamano_vaso === filtroTamano : true) && d.Bebida.toLowerCase().includes(textoBusqueda)) ? 1 : 0.02); 
+                            }
+                        })
+                        .on("mouseout", () => { if (!filtroCategoria && !bebidaEnFoco) actualizarVistaFiltros(); })
+                        .on("click", function() {
+                            if(bebidaEnFoco) return; 
+                            if (filtroCategoria === cat) {
+                                filtroCategoria = null;
+                                d3.selectAll(".legend-item").style("background-color", "transparent");
+                            } else {
+                                filtroCategoria = cat;
+                                d3.selectAll(".legend-item").style("background-color", "transparent"); 
+                                d3.select(this).style("background-color", "#333"); 
+                            }
+                            actualizarVistaFiltros();
+                        });
+                    legendItem.append("div").attr("class", "color-box").style("background-color", colorScaleCat(cat));
+                    legendItem.append("div").attr("class", "legend-text").text(cat);
+                });
+            } else {
+                // Leyenda Modo Semáforo
+                const semaforoRef = [
+                    { label: "Bajo (≤ 25g - OMS Ideal)", color: "#2ed573" },
+                    { label: "Moderado (25g a 50g)", color: "#ffa502" },
+                    { label: "Peligro (> 50g - Supera Límite)", color: "#ff4757" }
+                ];
+                semaforoRef.forEach(s => {
+                    const legendItem = legendContainer.append("div").attr("class", "legend-item");
+                    legendItem.append("div").attr("class", "color-box").style("background-color", s.color);
+                    legendItem.append("div").attr("class", "legend-text").text(s.label);
+                });
+            }
 
             // --- LEYENDA TAMAÑOS ---
             const sizeLegendContainer = d3.select("#size-legend-container");
@@ -413,14 +590,12 @@
             
             tamanosRef.forEach(t => {
                 const diametro = sizeScale(t.ml) * 2;
-                
-                const item = sizeLegendContainer.append("div")
-                    .attr("class", modoVista === 'promedios' ? "size-item disabled" : "size-item");
+                const item = sizeLegendContainer.append("div").attr("class", modoVista === 'promedios' ? "size-item disabled" : "size-item");
 
                 if(modoVista === 'todas') {
                     item.on("mouseover", function() {
                             if (!filtroTamano && !bebidaEnFoco) {
-                                bubbles.style("opacity", d => (d.tamano_vaso === t.nombre && (filtroCategoria ? d.Categoria_bebida === filtroCategoria : true) && d.Bebida.toLowerCase().includes(textoBusqueda)) ? 1 : 0.02);
+                                svg.selectAll(".bubble").style("opacity", d => (d.tamano_vaso === t.nombre && (filtroCategoria ? d.Categoria_bebida === filtroCategoria : true) && d.Bebida.toLowerCase().includes(textoBusqueda)) ? 1 : 0.02);
                             }
                         })
                         .on("mouseout", function() { if(!filtroTamano && !bebidaEnFoco) actualizarVistaFiltros(); })
@@ -437,10 +612,7 @@
                             actualizarVistaFiltros();
                         });
                 }
-
-                item.append("div").attr("class", "size-circle")
-                    .style("width", diametro+"px").style("height", diametro+"px")
-                    .style("margin-left", (maxDiametro - diametro)/2 + "px").style("margin-right", "15px");
+                item.append("div").attr("class", "size-circle").style("width", diametro+"px").style("height", diametro+"px").style("margin-left", (maxDiametro - diametro)/2 + "px").style("margin-right", "15px");
                 item.append("div").attr("class", "size-text").text(`${t.nombre} (${t.ml} ml)`);
             });
 
@@ -454,7 +626,11 @@
                 if(!bebidaEnFoco) actualizarVistaFiltros();
             });
             
-            d3.select(window).on("resize", () => dibujarVisualizacion(data));
+            d3.select(window).on("resize", () => {
+                const nw = container.clientWidth, nh = container.clientHeight;
+                svg.attr("width", nw).attr("height", nh);
+                dibujarVisualizacion(data);
+            });
         }
     </script>
 </body>
