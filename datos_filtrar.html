@@ -395,8 +395,8 @@
             const yScale = d3.scaleLinear().domain([-2, maxValY * 1.05]).range([height - margin.bottom, margin.top]);
             const sizeScale = d3.scalePow().exponent(1.5).domain([30, 591]).range([8, 20]); 
             
-            const freqScale = d3.scaleLinear().domain([0, maxValX]).range([800, 150]); 
-            const durationScale = d3.scaleLinear().domain([0, maxValY]).range([0.1, 2.5]);
+            const freqScale = d3.scaleLinear().domain([0, maxValY]).range([150, 500]);
+            const durationScale = d3.scaleLinear().domain([0, maxValX]).range([0.1, 2.5]);
 
             // EJES - Actualización animada
             const yAxisFormat = metricaAzucar === 'pct' ? "%" : "g";
@@ -497,7 +497,7 @@
                 })
                 .on("click", async function(event, d) {
                     if (Tone.context.state !== 'running') await Tone.start();
-                    synth.triggerAttackRelease(freqScale(Number(d[variableX]) || 0), durationScale(getAzucar(d)));
+                    synth.triggerAttackRelease(freqScale(getAzucar(d) || 0), durationScale(Number(d[variableX]) || 0));
                     
                     bebidaEnFoco = d.Bebida;
                     document.dispatchEvent(new CustomEvent('actualizarViz'));
