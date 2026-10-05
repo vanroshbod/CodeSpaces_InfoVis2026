@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
     <style>
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; color: #e0e0e0; overflow: hidden; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #464040; color: #e0e0e0; overflow: hidden; }
 
         /* --- Layout --- */
         #dashboard { display: flex; width: 100vw; height: 100vh; }
@@ -116,6 +116,9 @@
     <div id="dashboard">
         <div id="sidebar">
             <div id="vista-leyenda" class="sidebar-view active">
+                
+                <a href="index.html" class="boton">Inicio</a>
+                
                 <h2>Explorador</h2>
                 
                 <div class="instrucciones" style="margin-bottom: 5px;">Densidad de datos:</div>
@@ -563,7 +566,7 @@
                     const cal = Number(d['Calories (Cal)']) || 0;
                     const glupFreq = calPitchScale(cal);
                     glupSynth.triggerAttackRelease(glupFreq, "8n", now);
-                    glupSynth.triggerAttackRelease(glupFreq * 0.85, "8n", now + 0.12);
+                    // glupSynth.triggerAttackRelease(glupFreq * 0.85, "8n", now + 0.12);
 
                     // 2. Sonido Granos de Azúcar cayendo basado en azucar_pct
                     const azucar = Number(d.azucar_pct) || 0;
