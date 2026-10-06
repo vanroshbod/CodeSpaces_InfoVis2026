@@ -96,7 +96,6 @@
         svg text { font-family: sans-serif; }
         .chart-title { fill: #ffffff; font-size: 16px; font-weight: bold; letter-spacing: 0.5px; }
 
-        /* Forzar visualmente el color blanco idéntico al título */
         .axis-label { fill: #ffffff !important; font-size: 12px; font-weight: bold; }
         .x-axis path.domain, .y-axis path.domain,
         .x-axis .tick line, .y-axis .tick line { 
@@ -217,31 +216,31 @@
         // ==========================================
         // CONFIGURACIÓN DE AUDIO TONE.JS (SONIFICACIÓN)
         // ==========================================
-        // 1. Sintetizador "Glup" (Eje X) con soporte para sustain y duración variable
-        const lowpassMiel = new Tone.Filter(350, "lowpass").toDestination();
-        const glupSynth = new Tone.MembraneSynth({
-            pitchDecay: 0.12,
-            octaves: 1.8,
+        
+        // 1. SINTETIZADOR "GLUP" (Eje X)
+        // Usamos Tone.Synth con onda senoidal y filtro lowpass a 800Hz para asegurar resonancia y cuerpo audible
+        const lowpassMiel = new Tone.Filter(800, "lowpass").toDestination();
+        const glupSynth = new Tone.Synth({
             oscillator: { type: "sine" },
             envelope: {
-                attack: 0.02,
-                decay: 0.5,
-                sustain: 0.3,   // Permite sostener la duración solicitada
-                release: 0.8
+                attack: 0.05,
+                decay: 0.4,
+                sustain: 0.6,   // Mantiene el cuerpo del sonido durante el tiempo requerido
+                release: 0.5
             }
         }).connect(lowpassMiel);
 
-        // 2. Sintetizador "Esquirlas / Caída de Azúcar"
+        // 2. SINTETIZADOR "ESQUIRLAS / CAÍDA DE AZÚCAR"
         const sugarFilter = new Tone.Filter({
-            frequency: 1800,
+            frequency: 2000,
             type: "highpass"
         }).toDestination();
 
         const sugarSynth = new Tone.NoiseSynth({
             noise: { type: "pink" },
             envelope: {
-                attack: 0.002,
-                decay: 0.025,
+                attack: 0.003,
+                decay: 0.03,
                 sustain: 0
             }
         }).connect(sugarFilter);
@@ -452,36 +451,35 @@
             const sizeScale = d3.scalePow().exponent(1.5).domain([30, 591]).range([8, 20]); 
             
             // ==========================================
-            // ESCALAS DE SONIDO ACTUALIZADAS
+            // ESCALAS DE SONIDO CALIBRADAS
             // ==========================================
-            // Duración del sonido Glup (Eje X): Mayor valor = mayor duración, mínimo 1.0 segundo
+            // Duración del Glup: mínimo 1.0s, máximo 3.0s según el valor de X
             const durationScaleX = d3.scaleLinear()
                 .domain([0, maxValX || 100])
-                .range([1.0, 3.2])
+                .range([1.0, 3.0])
                 .clamp(true);
 
-            // Tono base del Glup
+            // Tono base del Glup (entre 160Hz y 90Hz para que se perciba bien en cualquier altavoz)
             const calPitchScale = d3.scaleLinear()
                 .domain([0, maxValX || 100])
-                .range([85, 40])
+                .range([160, 90])
                 .clamp(true);
 
-            // Volumen del Glup
+            // Volumen del Glup (audible entre -5dB y +2dB)
             const calVolumeScale = d3.scaleLinear()
                 .domain([0, maxValX || 100])
-                .range([-18, 1])
+                .range([-5, 2])
                 .clamp(true);
 
-            // Cantidad de esquirlas de azúcar
+            // Esquirlas de azúcar
             const sugarGrainsScale = d3.scaleLinear()
                 .domain([0, maxAzucarPct || 20])
-                .range([3, 14])
+                .range([3, 15])
                 .clamp(true);
 
-            // Volumen del azúcar
             const sugarVolumeScale = d3.scaleLinear()
                 .domain([0, maxAzucarPct || 20])
-                .range([-22, -3])
+                .range([-18, -3])
                 .clamp(true);
 
             // EJES
@@ -609,8 +607,9 @@
                     tooltip.style("opacity", 0);
                 })
                 .on("click", async function(event, d) {
-                    event.stopPropagation(); // Detiene propagación para no ejecutar el window.click inmediatamente
+                    event.stopPropagation();
 
+                    // Garantizar arranque del AudioContext
                     if (Tone.context.state !== 'running') {
                         await Tone.start();
                     }
@@ -618,26 +617,28 @@
                     const now = Tone.now();
                     const valX = Number(d[variableX]) || 0;
 
-                    // 1. SONIDO GLUP (EJE X)
-                    // Mayor valor en X -> mayor duración (mínimo 1.0s)
+                    // 1. REPRODUCCIÓN "GLUP" (EJE X)
                     const duracionGlup = durationScaleX(valX);
-                    const glupFreq = calPitchScale(valX);
-                    const glupVol = calVolumeScale(valX);
+                    const freqInicio = calPitchScale(valX);
+                    const freqFin = freqInicio * 0.55; // Caída de tono que genera el efecto líquido 'glup'
+                    const volGlup = calVolumeScale(valX);
 
-                    glupSynth.volume.setValueAtTime(glupVol, now);
-                    // Disparo con la duración calculada en segundos
-                    glupSynth.triggerAttackRelease(glupFreq, duracionGlup, now);
+                    // Ajustar volumen y rampa de frecuencia
+                    glupSynth.volume.setValueAtTime(volGlup, now);
+                    glupSynth.triggerAttack(freqInicio, now);
+                    // Rampa descendente suave durante la duración calculada
+                    glupSynth.frequency.exponentialRampToValueAtTime(freqFin, now + duracionGlup * 0.7);
+                    glupSynth.triggerRelease(now + duracionGlup);
 
-                    // 2. SONIDO ESQUIRLAS DE AZÚCAR (EN PARALELO)
+                    // 2. REPRODUCCIÓN ESQUIRLAS DE AZÚCAR (EN PARALELO)
                     const azucar = Number(d.azucar_pct) || 0;
                     const numGranos = Math.round(sugarGrainsScale(azucar));
                     const sugarVol = sugarVolumeScale(azucar);
 
                     sugarSynth.volume.setValueAtTime(sugarVol, now);
-                    // Inicia simultáneamente en 'now'
                     reproducirGranosAzucar(numGranos, now);
 
-                    // Reacción visual y ficha de detalle
+                    // Foco visual y ficha
                     bebidaEnFoco = d.Bebida;
                     document.dispatchEvent(new CustomEvent('actualizarViz'));
                     mostrarDetalle(d, colorScaleLeche(d.tipo_leche));
