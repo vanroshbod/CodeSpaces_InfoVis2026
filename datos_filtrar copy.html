@@ -438,7 +438,7 @@
             // Volumen del Glup: mayor valor en X = mayor volumen (-6dB a +4dB)
             const calVolumeScale = d3.scaleLinear()
                 .domain([0, maxValX || 100])
-                .range([-6, 4])
+                .range([2, 8])
                 .clamp(true);
 
             // Volumen del azúcar: mayor porcentaje de azúcar = mayor volumen (-16dB a +2dB)
@@ -592,7 +592,7 @@
                         glupPlayer.stop(); // Detener sin pasar 'now' para reiniciar el buffer de inmediato
                         glupPlayer.volume.setValueAtTime(volGlup, now);
                         
-                        // Mapeo natural de velocidad: a mayor valor en X, más lento y espeso suena (de 1.2x a 0.7x)
+                        // a mayor valor en X, más lento y espeso suena (de 1.2x a 0.7x)
                         // o velocidad normal 1.0 para que la burbuja suene nítida y completa
                         glupPlayer.playbackRate = Math.max(0.6, 1.5 - (duracionGlup * 0.25));
                         
