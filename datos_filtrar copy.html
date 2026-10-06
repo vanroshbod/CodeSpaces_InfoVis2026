@@ -587,32 +587,28 @@
                     const volGlup = calVolumeScale(valX);
                     const volAzucar = sugarVolumeScale(azucar);
 
-                    // 1. REPRODUCIR SONIDO GLUP (EJE X)
+                    // 1. REPRODUCIR SONIDO GLUP (EJE X) - Con presencia y sin corte abrupto
                     if (glupPlayer.loaded) {
-                        glupPlayer.stop(); // Detener sin pasar 'now' para reiniciar el buffer de inmediato
-                        glupPlayer.volume.setValueAtTime(volGlup, now);
+                        glupPlayer.stop();
+                        glupPlayer.volume.value = volGlup; // Asignación directa de ganancia reforzada
                         
-                        // a mayor valor en X, más lento y espeso suena (de 1.2x a 0.7x)
-                        // o velocidad normal 1.0 para que la burbuja suene nítida y completa
-                        glupPlayer.playbackRate = Math.max(0.6, 1.5 - (duracionGlup * 0.25));
-                        
-                        // Dejar que suene el glup completo (o darle suficiente margen para que no se corte la burbuja)
+                        // Velocidad controlada para mantener el cuerpo natural de la burbuja
+                        glupPlayer.playbackRate = Math.max(0.7, 1.3 - (duracionGlup * 0.2));
                         glupPlayer.start(now, 0, Math.max(duracionGlup, 2.0));
                     }
 
-                    // 2. REPRODUCIR SONIDO AZÚCAR (EN PARALELO)
-                    if (sugarPlayer.loaded) {
-                        if (sugarPlayer.state === "started") sugarPlayer.stop(now);
-                        
-                        sugarPlayer.volume.setValueAtTime(volAzucar, now);
-                        sugarPlayer.start(now, 0, duracionGlup);
-                    }
+                    // 2. REPRODUCIR SONIDO AZÚCAR (EN PARALELO) - Atenuado para evitar enmascaramiento
+                        if (sugarPlayer.loaded) {
+                            sugarPlayer.stop();
+                            sugarPlayer.volume.value = volAzucar;
+                            sugarPlayer.start(now, 0, duracionGlup);
+                        }
 
-                    // Foco visual y ficha
-                    bebidaEnFoco = d.Bebida;
-                    document.dispatchEvent(new CustomEvent('actualizarViz'));
-                    mostrarDetalle(d, colorScaleLeche(d.tipo_leche));
-                });
+                        // Foco visual y ficha
+                        bebidaEnFoco = d.Bebida;
+                        document.dispatchEvent(new CustomEvent('actualizarViz'));
+                        mostrarDetalle(d, colorScaleLeche(d.tipo_leche));
+                    });
 
             const bubbles = bubblesEnter.merge(bubbleSelection);
             bubbles.transition().duration(800)
