@@ -589,13 +589,15 @@
 
                     // 1. REPRODUCIR SONIDO GLUP (EJE X)
                     if (glupPlayer.loaded) {
-                        // Detener si estaba reproduciéndose para reiniciar limpiamente
-                        if (glupPlayer.state === "started") glupPlayer.stop(now);
-                        
+                        glupPlayer.stop(); // Detener sin pasar 'now' para reiniciar el buffer de inmediato
                         glupPlayer.volume.setValueAtTime(volGlup, now);
-                        // Ajustar la velocidad para modular la duración natural
-                        glupPlayer.playbackRate = 2.0 / duracionGlup;
-                        glupPlayer.start(now, 0, duracionGlup);
+                        
+                        // Mapeo natural de velocidad: a mayor valor en X, más lento y espeso suena (de 1.2x a 0.7x)
+                        // o velocidad normal 1.0 para que la burbuja suene nítida y completa
+                        glupPlayer.playbackRate = Math.max(0.6, 1.5 - (duracionGlup * 0.25));
+                        
+                        // Dejar que suene el glup completo (o darle suficiente margen para que no se corte la burbuja)
+                        glupPlayer.start(now, 0, Math.max(duracionGlup, 2.0));
                     }
 
                     // 2. REPRODUCIR SONIDO AZÚCAR (EN PARALELO)
