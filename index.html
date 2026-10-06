@@ -72,7 +72,7 @@
             transform: scale(1.08);
         }
 
-        /* --- Ventana Modal / Card Informativa --- */
+        /* --- Ventana Modal / Card Informativa (Oculta por defecto) --- */
         #modal-overlay {
             position: fixed;
             top: 0;
@@ -82,7 +82,7 @@
             background: rgba(0, 0, 0, 0.85);
             backdrop-filter: blur(5px);
             z-index: 1000;
-            display: flex;
+            display: none;
             align-items: center;
             justify-content: center;
             padding: 20px;
@@ -248,11 +248,38 @@
 
         .who-line { stroke-dasharray: 5,5; stroke-width: 1.5; }
         .who-label { font-size: 11px; font-weight: bold; }
+
+        /* --- Animación de Ondas en el Peor Caso --- */
+        @keyframes onda-radar {
+            0% {
+                r: 18px;
+                opacity: 0.9;
+                stroke-width: 2.5px;
+            }
+            100% {
+                r: 45px;
+                opacity: 0;
+                stroke-width: 0.5px;
+            }
+        }
+        .onda-animada {
+            fill: none;
+            stroke: #ff4757;
+            transform-origin: center;
+            animation: onda-radar 2.2s infinite ease-out;
+            pointer-events: none;
+        }
+        .onda-animada-2 {
+            animation-delay: 1.1s;
+        }
+        .annotation-group text, .annotation-group line {
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
 
-    <!-- MODAL / CARD INFORMATIVA INICIAL -->
+    <!-- MODAL / CARD INFORMATIVA (OCULTA POR DEFECTO) -->
     <div id="modal-overlay">
         <div id="modal-card">
             <h1>Proyecto de Visualización Nutricional de Bebidas de Starbucks</h1>
@@ -274,7 +301,7 @@
                 <li>Octavia Robledo</li>
             </ul>
 
-            <button id="btn-modal-ok">Entendido / Comenzar Exploración</button>
+            <button id="btn-modal-ok"> Genial! </button>
         </div>
     </div>
 
@@ -293,29 +320,11 @@
                     <button id="btn-vista-promedios" class="btn-toggle active">Promedios</button>
                 </div>
 
-                <!-- SELECTOR DE EJE X -->
-                <!-- <div class="control-group" style="flex-direction: column; gap: 5px; margin-top: 5px;">
-                    <label style="font-size: 0.85em; color: #888;">Analizar en Eje X:</label>
-                    <select id="select-eje-x" class="custom-select">
-                        <option value="Calories (Cal)">Calorías Totales (Cal)</option>
-                        <option value="Caffeine_num">Cafeína (mg) - "Energía"</option>
-                        <option value="Protein (g)">Proteínas (g) - "Nutrición"</option>
-                        <option value="Total Fat (g)">Grasas Totales (g)</option>
-                    </select>
-                </div> -->
-
                 <!-- SELECTOR DE EJE Y -->
                 <div class="instrucciones" style="margin-bottom: 5px; margin-top: 10px;">Métrica de Azúcar (Eje Y):</div>
                 <div class="control-group">
                     <button id="btn-azucar-pct" class="btn-toggle">Concentración (%)</button>
                     <button id="btn-azucar-gr" class="btn-toggle active">Gramos Totales</button>
-                </div>
-
-                <!-- MODO DE COLOR (SEMÁFORO) -->
-                <div class="instrucciones" style="margin-bottom: 5px; margin-top: 5px;">Codificación de Color:</div>
-                <div class="control-group">
-                    <button id="btn-color-cat" class="btn-toggle">Categoría</button>
-                    <button id="btn-color-sem" class="btn-toggle active">Alerta Nutricional</button>
                 </div>
 
                 <div class="instrucciones">
@@ -362,12 +371,10 @@
             modalOverlay.style.display = 'flex';
         });
 
-        // Evitar que hacer clic dentro de la tarjeta cierre el modal
         modalCard.addEventListener('click', (event) => {
             event.stopPropagation();
         });
 
-        // Cerrar si hace clic fuera de la tarjeta
         modalOverlay.addEventListener('click', () => {
             modalOverlay.style.display = 'none';
         });
@@ -378,7 +385,6 @@
         let modoVista = 'promedios'; 
         let metricaAzucar = 'gr'; 
         let variableX = 'Calories (Cal)'; 
-        let modoColor = 'semaforo'; 
         
         let filtroCategoria = null; 
         let filtroTamano = null;
@@ -399,13 +405,6 @@
             { nombre: "Grande", ml: 473 },
             { nombre: "Venti", ml: 591 }
         ];
-
-        // ESCALAS DE COLOR
-        let categoriasUnicas = [];
-        let colorScaleCat;
-        const colorScaleLeche = d3.scaleOrdinal()
-            .domain(["Nonfat Milk", "Soymilk", "2% Milk", "Whole Milk", "Coconutmilk", "Almondmilk"])
-            .range(["#48dbfb", "#feca57", "#ff6b6b", "#1dd1a1", "#c8d6e5", "#ff9ff3"]);
 
         // ==========================================
         // CARGA DE AUDIOS REALES (TONE.PLAYER)
@@ -455,18 +454,21 @@
             toggleSidebar(false);
         });
 
-        // DETERMINACIÓN DE COLOR
+        // ==========================================
+        // COLOR MONOCROMÁTICO ROJO EN DEGRADÉ
+        // ==========================================
         function getColor(d) {
-            if (bebidaEnFoco && d.Bebida === bebidaEnFoco) return colorScaleLeche(d.tipo_leche);
-            
-            if (modoColor === 'semaforo') {
-                const azucar = Number(d['Sugars (g)']);
-                if (azucar > 50) return "#ff4757";
-                if (azucar > 25) return "#ffa502";
-                return "#2ed573";
-            }
-            
-            return colorScaleCat(d.Categoria_bebida);
+            const getAzucarVal = item => metricaAzucar === 'pct' ? Number(item.azucar_pct) || 0 : Number(item['Sugars (g)']) || 0;
+            const maxValX = d3.max(datosOriginales, item => Number(item['Calories (Cal)']) || 0) || 500;
+            const maxValY = d3.max(datosOriginales, item => getAzucarVal(item)) || 80;
+
+            const calNorm = Math.min(Math.max((Number(d['Calories (Cal)']) || 0) / maxValX, 0), 1);
+            const azucarNorm = Math.min(Math.max(getAzucarVal(d) / maxValY, 0), 1);
+
+            const intensidad = (calNorm + azucarNorm) / 2;
+            const intensidadCurva = Math.pow(intensidad, 0.75);
+
+            return d3.interpolateHsl("#ffffff", "#ff0022")(intensidadCurva);
         }
 
         function mostrarDetalle(datosBebida, colorFondo) {
@@ -507,12 +509,10 @@
             document.dispatchEvent(new CustomEvent('actualizarViz'));
         }
 
-        // EVITAR QUE CLICS EN EL SIDEBAR CIERREN EL DETALLE
         document.getElementById('sidebar').addEventListener('click', function(event) {
             event.stopPropagation();
         });
 
-        // CLIC GLOBAL PARA RESTABLECER EN CUALQUIER LUGAR DE LA PANTALLA
         window.addEventListener('click', function() {
             if (bebidaEnFoco) {
                 salirFoco();
@@ -559,13 +559,24 @@
                 datosOriginales = data.filter(d => d.Bebida && d.Categoria_bebida);
                 datosPromedios = generarPromedios(datosOriginales);
                 
-                categoriasUnicas = Array.from(new Set(datosOriginales.map(d => d.Categoria_bebida)));
-                colorScaleCat = d3.scaleOrdinal().domain(categoriasUnicas).range(d3.schemeSet3);
-
                 const container = document.getElementById('viz-container');
                 const svg = d3.select("#viz-container").append("svg")
                     .attr("width", container.clientWidth).attr("height", container.clientHeight);
                 
+                // DEFINICIÓN DE MARCADOR DE FLECHA (ARROWHEAD)
+                const defs = svg.append("defs");
+                defs.append("marker")
+                    .attr("id", "arrowhead")
+                    .attr("viewBox", "0 -5 10 10")
+                    .attr("refX", 8)
+                    .attr("refY", 0)
+                    .attr("markerWidth", 6)
+                    .attr("markerHeight", 6)
+                    .attr("orient", "auto")
+                    .append("path")
+                    .attr("d", "M0,-5L10,0L0,5")
+                    .attr("fill", "#ff4757");
+
                 svg.append("text").attr("class", "chart-title");
                 svg.append("g").attr("class", "who-group").style("opacity", 0);
                 svg.append("g").attr("class", "x-axis");
@@ -573,6 +584,7 @@
                 svg.append("text").attr("class", "x-axis-label");
                 svg.append("text").attr("class", "y-axis-label");
                 svg.append("g").attr("class", "bubble-group");
+                svg.append("g").attr("class", "annotation-group"); // Grupo para flecha, ondas y texto de máxima concentración
 
                 dibujarVisualizacion(modoVista === 'todas' ? datosOriginales : datosPromedios);
             })
@@ -606,21 +618,6 @@
             metricaAzucar = 'gr';
             d3.select("#btn-azucar-gr").classed("active", true);
             d3.select("#btn-azucar-pct").classed("active", false);
-            reDibujar();
-        });
-        d3.select("#select-eje-x").on("change", function() {
-            variableX = this.value; reDibujar();
-        });
-        d3.select("#btn-color-cat").on("click", function() {
-            modoColor = 'categoria';
-            d3.select("#btn-color-cat").classed("active", true);
-            d3.select("#btn-color-sem").classed("active", false);
-            reDibujar();
-        });
-        d3.select("#btn-color-sem").on("click", function() {
-            modoColor = 'semaforo';
-            d3.select("#btn-color-sem").classed("active", true);
-            d3.select("#btn-color-cat").classed("active", false);
             reDibujar();
         });
 
@@ -658,36 +655,15 @@
             const sizeScale = d3.scalePow().exponent(1.5).domain([30, 591]).range([8, 20]); 
             
             // ==========================================
-            // ESCALAS DE SONIDO CALIBRADAS PARA AUDIOS REALES
+            // ESCALAS DE SONIDO SINCRONIZADAS
             // ==========================================
-            // const durationScaleX = d3.scaleLinear()
-            //     .domain([0, maxValX || 100])
-            //     .range([1.0, 3.5])
-            //     .clamp(true);
-
-            // const calVolumeScale = d3.scaleLinear()
-            //     .domain([0, maxValX || 100])
-            //     .range([2, 8])
-            //     .clamp(true);
-
-            // const sugarVolumeScale = d3.scaleLinear()
-            //     .domain([0, maxAzucarPct || 20])
-            //     .range([-16, 2])
-            //     .clamp(true);
-
-            // ==========================================
-            // ESCALAS DE SONIDO CALIBRADAS
-            // ==========================================
-            // Duración fija sincronizada para ambos sonidos
             const duracionCompartida = 2.5;
 
-            // Volumen del Glup directamente proporcional a la variable del Eje X (-16dB a +4dB)
             const calVolumeScale = d3.scaleLinear()
                 .domain([5, maxValX || 110])
                 .range([-10, 10])
                 .clamp(true);
 
-            // Volumen del azúcar directamente proporcional a azucar_pct (-18dB a +2dB)
             const sugarVolumeScale = d3.scaleLinear()
                 .domain([0, maxAzucarPct || 20])
                 .range([-18, 2])
@@ -765,7 +741,7 @@
                 whoGroup.transition().duration(tDurationShort).style("opacity", 0);
             }
 
-            const OPACIDAD_BASE = modoVista === 'todas' ? 0.4 : 0.7; 
+            const OPACIDAD_BASE = modoVista === 'todas' ? 0.5 : 0.8; 
             const tooltip = d3.select("#tooltip");
 
             // BURBUJAS
@@ -776,7 +752,7 @@
                 .attr("cx", d => xScale(Number(d[variableX]) || 0))
                 .attr("cy", d => yScale(getAzucar(d) || 0))
                 .attr("r", 0)
-                .attr("stroke", "#000").attr("stroke-width", 0.5)
+                .attr("stroke", "#222").attr("stroke-width", 0.5)
                 .style("opacity", OPACIDAD_BASE);
 
             bubblesEnter
@@ -785,7 +761,7 @@
                         if (bebidaEnFoco) return b.Bebida === bebidaEnFoco ? (b === d ? 1 : 0.4) : 0.02;
                         if (!esVisible(b)) return 0.02;
                         if (filtroCategoria || (filtroTamano && modoVista === 'todas') || textoBusqueda !== "") return b === d ? 1 : 0.4;
-                        return b === d ? 1 : 0.1;
+                        return b === d ? 1 : 0.15;
                     });
                     
                     d3.select(this).style("opacity", 1).attr("stroke", "#fff").attr("stroke-width", 2)
@@ -801,14 +777,14 @@
                     tooltip.style("opacity", 1).html(`
                         <div class="title">${d.Bebida}</div>
                         <div class="detail">Tamaño: <span style="color:#00d2ff">${d.tamano_vaso} (${d.volumen_ml}ml)</span></div>
-                        <div class="detail">Leche: <span style="color:${bebidaEnFoco ? colorScaleLeche(d.tipo_leche) : '#fff'}">${d.tipo_leche}</span></div>
+                        <div class="detail">Leche: <span style="color:#fff">${d.tipo_leche}</span></div>
                         <div class="detail">Azúcar: <span style="color:#ff6b6b">${textoAzucar}</span> (${cucharaditas} 🥄)</div>
                         <div class="detail">${nombresVariables[variableX]}: <span style="color:#feca57">${valX}</span></div>
                         <div class="tooltip-hint" style="margin-top: 8px;">👆 Haz clic para aislar y escuchar el sonido</div>
                     `).style("left", xPos + "px").style("top", yPos + "px");
                 })
                 .on("mouseout", function(event, d) {
-                    d3.select(this).attr("stroke", "#000").attr("stroke-width", 0.5).attr("r", sizeScale(Number(d.volumen_ml) || 473));
+                    d3.select(this).attr("stroke", "#222").attr("stroke-width", 0.5).attr("r", sizeScale(Number(d.volumen_ml) || 473));
                     svg.selectAll(".bubble").style("opacity", b => {
                         if (bebidaEnFoco) return b.Bebida === bebidaEnFoco ? 1 : 0.02;
                         if (!esVisible(b)) return 0.02; 
@@ -825,32 +801,32 @@
                     }
 
                     const now = Tone.now();
-                        const valX = Number(d[variableX]) || 0;
-                        const azucar = Number(d.azucar_pct) || 0;
+                    const valX = Number(d[variableX]) || 0;
+                    const azucar = Number(d.azucar_pct) || 0;
 
-                        const volGlup = calVolumeScale(valX);
-                        const volAzucar = sugarVolumeScale(azucar);
+                    const volGlup = calVolumeScale(valX);
+                    const volAzucar = sugarVolumeScale(azucar);
 
-                        // 1. REPRODUCIR SONIDO GLUP (EJE X)
-                        if (glupPlayer.loaded) {
-                            glupPlayer.stop();
-                            glupPlayer.volume.value = volGlup; // Volumen directamente proporcional al Eje X
-                            glupPlayer.playbackRate = 1.0;     // Velocidad natural (sin distorsión de tono)
-                            glupPlayer.start(now, 0, duracionCompartida);
-                        }
+                    // 1. REPRODUCIR SONIDO GLUP
+                    if (glupPlayer.loaded) {
+                        glupPlayer.stop();
+                        glupPlayer.volume.value = volGlup;
+                        glupPlayer.playbackRate = 1.0;
+                        glupPlayer.start(now, 0, duracionCompartida);
+                    }
 
-                        // 2. REPRODUCIR SONIDO AZÚCAR (MISMA DURACIÓN Y EN PARALELO)
-                        if (sugarPlayer.loaded) {
-                            sugarPlayer.stop();
-                            sugarPlayer.volume.value = volAzucar; // Volumen directamente proporcional a azucar_pct
-                            sugarPlayer.start(now, 0, duracionCompartida);
-                        }
+                    // 2. REPRODUCIR SONIDO AZÚCAR
+                    if (sugarPlayer.loaded) {
+                        sugarPlayer.stop();
+                        sugarPlayer.volume.value = volAzucar;
+                        sugarPlayer.start(now, 0, duracionCompartida);
+                    }
 
-                        // Foco visual y ficha
-                        bebidaEnFoco = d.Bebida;
-                        mostrarDetalle(d, colorScaleLeche(d.tipo_leche));
-                        
-                        toggleSidebar(true);
+                    // Foco visual conservando su tono rojo degradé
+                    bebidaEnFoco = d.Bebida;
+                    mostrarDetalle(d, getColor(d));
+                    
+                    toggleSidebar(true);
                 });
 
             const bubbles = bubblesEnter.merge(bubbleSelection);
@@ -862,11 +838,81 @@
 
             bubbleSelection.exit().transition().duration(tDurationExit).attr("r", 0).remove();
 
+            // ========================================================
+            // ANOTACIÓN Y ONDAS DEL PEOR CASO (MÁXIMA COMBINACIÓN AZÚCAR + CALORÍAS)
+            // ========================================================
+            const annotationGroup = svg.select(".annotation-group");
+            annotationGroup.selectAll("*").remove(); // Limpiar elementos previos al redibujar
+
+            if (data.length > 0 && !bebidaEnFoco) {
+                // 1. Valores máximos del dataset para normalizar equitativamente (0 a 1)
+                const maxCalDataset = d3.max(datosOriginales, d => Number(d['Calories (Cal)']) || 0) || 1;
+                const maxAzucarDataset = d3.max(datosOriginales, d => getAzucar(d) || 0) || 1;
+
+                // 2. Función de puntuación combinada (azúcar Y calorías)
+                const scorePeorCaso = item => {
+                    const calNorm = (Number(item['Calories (Cal)']) || 0) / maxCalDataset;
+                    const azucarNorm = (getAzucar(item) || 0) / maxAzucarDataset;
+                    return calNorm + azucarNorm; // Mayor puntuación combinada
+                };
+
+                // 3. Encontrar la bebida con el peor caso combinado
+                const maxItem = data.reduce((prev, curr) => (scorePeorCaso(curr) > scorePeorCaso(prev)) ? curr : prev, data[0]);
+
+                if (maxItem) {
+                    const targetX = xScale(Number(maxItem[variableX]) || 0);
+                    const targetY = yScale(getAzucar(maxItem) || 0);
+                    const targetR = sizeScale(Number(maxItem.volumen_ml) || 473);
+
+                    // Ondas concéntricas animadas en torno a la burbuja
+                    annotationGroup.append("circle")
+                        .attr("cx", targetX)
+                        .attr("cy", targetY)
+                        .attr("class", "onda-animada");
+
+                    annotationGroup.append("circle")
+                        .attr("cx", targetX)
+                        .attr("cy", targetY)
+                        .attr("class", "onda-animada onda-animada-2");
+
+                    // Coordenadas del texto y flecha
+                    const textX = Math.max(margin.left + 10, targetX - 165);
+                    const textY = Math.max(margin.top + 30, targetY - 60);
+
+                    // Textos explicativos
+                    annotationGroup.append("text")
+                        .attr("x", textX)
+                        .attr("y", textY)
+                        .text("¡MÁXIMA CONCENTRACIÓN!")
+                        .attr("fill", "#ff4757")
+                        .style("font-weight", "bold")
+                        .style("font-size", "14px");
+
+                    const nombreCorto = maxItem.Bebida.length > 25 ? maxItem.Bebida.substring(0, 25) + "..." : maxItem.Bebida;
+                    annotationGroup.append("text")
+                        .attr("x", textX)
+                        .attr("y", textY + 18)
+                        .text(nombreCorto)
+                        .attr("fill", "#ffffff")
+                        .style("font-size", "12px")
+                        .style("opacity", "0.9");
+
+                    // Flecha que apunta hacia la burbuja
+                    annotationGroup.append("line")
+                        .attr("x1", textX + 65)
+                        .attr("y1", textY + 28)
+                        .attr("x2", targetX - targetR * 0.4)
+                        .attr("y2", targetY - targetR * 0.4)
+                        .attr("stroke", "#ff4757")
+                        .attr("stroke-width", 2)
+                        .attr("marker-end", "url(#arrowhead)");
+                }
+            }
+
             function esVisible(d) {
                 const coincideTexto = d.Bebida.toLowerCase().includes(textoBusqueda);
                 const coincideCat = filtroCategoria ? d.Categoria_bebida === filtroCategoria : true;
                 const coincideTam = (filtroTamano && modoVista === 'todas') ? d.tamano_vaso === filtroTamano : true;
-                if(modoColor === 'semaforo' && filtroCategoria && d.Categoria_bebida !== filtroCategoria) return false;
                 return coincideTexto && coincideCat && coincideTam;
             }
 
@@ -883,51 +929,27 @@
                         return esVisible(d) ? "all" : "none";
                     })
                     .attr("fill", d => getColor(d));
+
+                // Ocultar la anotación y ondas si hay una bebida en foco
+                annotationGroup.style("display", bebidaEnFoco ? "none" : "block");
             }
 
             document.addEventListener('actualizarViz', actualizarVistaFiltros);
 
+            // LEYENDA DEL DEGRADÉ MONOCROMÁTICO (Azúcar y Calorías)
             const legendContainer = d3.select("#legend-container");
-            legendContainer.html(""); 
-            
-            if (modoColor === 'categoria') {
-                categoriasUnicas.forEach(cat => {
-                    const legendItem = legendContainer.append("div").attr("class", "legend-item")
-                        .on("mouseover", () => { 
-                            if (!filtroCategoria && !bebidaEnFoco) {
-                                svg.selectAll(".bubble").style("opacity", d => (d.Categoria_bebida === cat && (filtroTamano && modoVista === 'todas' ? d.tamano_vaso === filtroTamano : true) && d.Bebida.toLowerCase().includes(textoBusqueda)) ? 1 : 0.02); 
-                            }
-                        })
-                        .on("mouseout", () => { if (!filtroCategoria && !bebidaEnFoco) actualizarVistaFiltros(); })
-                        .on("click", function(event) {
-                            event.stopPropagation();
-                            if(bebidaEnFoco) return; 
-                            if (filtroCategoria === cat) {
-                                filtroCategoria = null;
-                                d3.selectAll(".legend-item").style("background-color", "transparent");
-                            } else {
-                                filtroCategoria = cat;
-                                d3.selectAll(".legend-item").style("background-color", "transparent"); 
-                                d3.select(this).style("background-color", "#333"); 
-                            }
-                            actualizarVistaFiltros();
-                        });
-                    legendItem.append("div").attr("class", "color-box").style("background-color", colorScaleCat(cat));
-                    legendItem.append("div").attr("class", "legend-text").text(cat);
-                });
-            } else {
-                const semaforoRef = [
-                    { label: "Bajo (≤ 25g - OMS Ideal)", color: "#2ed573" },
-                    { label: "Moderado (25g a 50g)", color: "#ffa502" },
-                    { label: "Peligro (> 50g - Supera Límite)", color: "#ff4757" }
-                ];
-                semaforoRef.forEach(s => {
-                    const legendItem = legendContainer.append("div").attr("class", "legend-item");
-                    legendItem.append("div").attr("class", "color-box").style("background-color", s.color);
-                    legendItem.append("div").attr("class", "legend-text").text(s.label);
-                });
-            }
+            legendContainer.html(`
+                <div style="font-size: 0.85em; margin-bottom: 8px; color: #ccc;">
+                    <strong>Intensidad Nutricional</strong> (Calorías + Azúcar)
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.75em; color: #aaa;">Bajo</span>
+                    <div style="flex: 1; height: 10px; border-radius: 4px; border: 1px solid #444; background: linear-gradient(to right, #ffffff, #ff0022);"></div>
+                    <span style="font-size: 0.75em; color: #ff0022; font-weight: bold;">Alto</span>
+                </div>
+            `);
 
+            // LEYENDA TAMAÑOS
             const sizeLegendContainer = d3.select("#size-legend-container");
             sizeLegendContainer.html(""); 
             const maxDiametro = sizeScale(591) * 2; 
