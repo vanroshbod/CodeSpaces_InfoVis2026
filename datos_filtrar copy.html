@@ -48,17 +48,6 @@
         }
         .custom-select:focus { border-color: #00d2ff; }
 
-        /* Buscador */
-        /* .buscador-container { margin-bottom: 15px; }
-        #buscador { 
-            width: 100%; padding: 10px 12px; border-radius: 5px; 
-            border: 1px solid #444; background-color: #222; color: #fff; 
-            box-sizing: border-box; outline: none; font-size: 0.9em;
-            transition: border-color 0.2s;
-        }
-        #buscador:focus { border-color: #00d2ff; }
-        #buscador::placeholder { color: #888; } */
-
         /* Leyendas Interactivas */
         .legend-item, .size-item {
             display: flex; align-items: center; margin-bottom: 8px;
@@ -106,10 +95,20 @@
         /* --- Ejes y Títulos D3 --- */
         svg text { font-family: sans-serif; }
         .chart-title { fill: #ffffff; font-size: 16px; font-weight: bold; letter-spacing: 0.5px; }
-        /* Contraste mejorado idéntico al color del título */
-        .axis-label { fill: #ffffff; font-size: 12px; font-weight: bold; }
-        .domain, .tick line { stroke: #ffffff; stroke-opacity: 0.4; }
-        .tick text { fill: #ffffff; font-weight: 500; }
+
+        /* Estilos de alta prioridad para forzar el color idéntico al título (#ffffff) */
+        .axis-label { fill: #ffffff !important; font-size: 12px; font-weight: bold; }
+        .x-axis path.domain, .y-axis path.domain,
+        .x-axis .tick line, .y-axis .tick line { 
+            stroke: #ffffff !important; 
+            stroke-opacity: 0.6 !important; 
+        }
+        .x-axis .tick text, .y-axis .tick text { 
+            fill: #ffffff !important; 
+            font-size: 11px !important;
+            font-weight: 500 !important;
+        }
+
         .who-line { stroke-dasharray: 5,5; stroke-width: 1.5; }
         .who-label { font-size: 11px; font-weight: bold; }
     </style>
@@ -154,10 +153,6 @@
                     <button id="btn-color-cat" class="btn-toggle active">Categoría</button>
                     <button id="btn-color-sem" class="btn-toggle">Alerta Nutricional</button>
                 </div>
-
-                <!-- <div class="buscador-container" style="margin-top: 10px;">
-                    <input type="text" id="buscador" placeholder="🔍 Buscar bebida por nombre...">
-                </div> -->
 
                 <div class="instrucciones">
                     <strong>Pasa el mouse</strong> o <strong>haz clic</strong> para filtrar. <br>👆 <strong>Clic en burbuja</strong> para escuchar el azúcar
@@ -231,7 +226,7 @@
             oscillator: { type: "sine" },
             envelope: {
                 attack: 0.02,
-                decay: 0.65,    // Glup más extendido y lento
+                decay: 0.65,
                 sustain: 0.02,
                 release: 0.7
             }
@@ -239,20 +234,19 @@
 
         // 2. Sintetizador "Granos de Azúcar" (azucar_pct)
         const sugarFilter = new Tone.Filter({
-            frequency: 1800,   // Frecuencia reducida para sonido de esquirlas/cristal tenue
+            frequency: 1800,
             type: "highpass"
         }).toDestination();
 
         const sugarSynth = new Tone.NoiseSynth({
-            noise: { type: "pink" }, // Ruido más orgánico y suave que el ruido blanco puro
+            noise: { type: "pink" },
             envelope: {
                 attack: 0.002,
-                decay: 0.025,   // Toque percusivo corto tipo chasquido de esquirla
+                decay: 0.025,
                 sustain: 0
             }
         }).connect(sugarFilter);
 
-        // Función para simular la cascada de granitos
         function reproducirGranosAzucar(cantidadGranos, startTime) {
             for (let i = 0; i < cantidadGranos; i++) {
                 const delay = (i * 0.035) + (Math.random() * 0.02);
@@ -266,9 +260,9 @@
             
             if (modoColor === 'semaforo') {
                 const azucar = Number(d['Sugars (g)']);
-                if (azucar > 50) return "#ff4757"; // Rojo
-                if (azucar > 25) return "#ffa502"; // Amarillo
-                return "#2ed573"; // Verde
+                if (azucar > 50) return "#ff4757";
+                if (azucar > 25) return "#ffa502";
+                return "#2ed573";
             }
             
             return colorScaleCat(d.Categoria_bebida);
@@ -359,7 +353,6 @@
                 const svg = d3.select("#viz-container").append("svg")
                     .attr("width", container.clientWidth).attr("height", container.clientHeight);
                 
-                // Elementos estructurales y título general
                 svg.append("text").attr("class", "chart-title");
                 svg.append("g").attr("class", "who-group").style("opacity", 0);
                 svg.append("g").attr("class", "x-axis");
@@ -449,25 +442,21 @@
             const sizeScale = d3.scalePow().exponent(1.5).domain([30, 591]).range([8, 20]); 
             
             // ESCALAS DE SONIDO
-            // Más calorías -> tono más grave / bajo (miel espesa)
             const calPitchScale = d3.scaleLinear()
                 .domain([0, maxCal || 500])
                 .range([90, 35])
                 .clamp(true);
 
-            // Volumen del Glup: más calorías = más fuerte (-20dB a +2dB)
             const calVolumeScale = d3.scaleLinear()
                 .domain([0, maxCal || 500])
                 .range([-20, 2])
                 .clamp(true);
 
-            // Cantidad de esquirlas de azúcar
             const sugarGrainsScale = d3.scaleLinear()
                 .domain([0, maxAzucarPct || 20])
                 .range([2, 12])
                 .clamp(true);
 
-            // Volumen del azúcar: más azúcar = más fuerte (-24dB a -3dB)
             const sugarVolumeScale = d3.scaleLinear()
                 .domain([0, maxAzucarPct || 20])
                 .range([-24, -3])
@@ -478,19 +467,51 @@
             const xAxis = d3.axisBottom(xScale).tickFormat(d => d);
             const yAxis = d3.axisLeft(yScale).tickFormat(d => d + yAxisFormat);
 
-            svg.select(".x-axis").transition().duration(800)
-                .attr("transform", `translate(0,${height - margin.bottom})`).call(xAxis).style("font-size", "11px");
-            svg.select(".y-axis").transition().duration(800)
-                .attr("transform", `translate(${margin.left},0)`).call(yAxis).style("font-size", "11px");
+            // Renderizado de Eje X y aplicación directa de color blanco idéntico al título
+            const gX = svg.select(".x-axis");
+            gX.transition().duration(800)
+                .attr("transform", `translate(0,${height - margin.bottom})`)
+                .call(xAxis);
 
+            gX.selectAll("text")
+                .style("fill", "#ffffff")
+                .style("font-size", "11px")
+                .style("font-weight", "500");
+
+            gX.selectAll("line, path")
+                .style("stroke", "#ffffff")
+                .style("stroke-opacity", "0.6");
+
+            // Renderizado de Eje Y y aplicación directa de color blanco idéntico al título
+            const gY = svg.select(".y-axis");
+            gY.transition().duration(800)
+                .attr("transform", `translate(${margin.left},0)`)
+                .call(yAxis);
+
+            gY.selectAll("text")
+                .style("fill", "#ffffff")
+                .style("font-size", "11px")
+                .style("font-weight", "500");
+
+            gY.selectAll("line, path")
+                .style("stroke", "#ffffff")
+                .style("stroke-opacity", "0.6");
+
+            // Etiquetas de Ejes (Labels)
             svg.select(".x-axis-label").transition().duration(800)
-                .attr("x", width / 2).attr("y", height - 20).style("text-anchor", "middle").text(nombresVariables[variableX]);
+                .attr("x", width / 2).attr("y", height - 20)
+                .style("text-anchor", "middle")
+                .style("fill", "#ffffff")
+                .text(nombresVariables[variableX]);
             
             const yAxisTitle = metricaAzucar === 'pct' ? "Concentración de Azúcar (g/100ml)" : "Azúcar Total (gramos)";
             svg.select(".y-axis-label").transition().duration(800)
-                .attr("transform", "rotate(-90)").attr("x", -height / 2).attr("y", 20).style("text-anchor", "middle").text(yAxisTitle);
+                .attr("transform", "rotate(-90)").attr("x", -height / 2).attr("y", 20)
+                .style("text-anchor", "middle")
+                .style("fill", "#ffffff")
+                .text(yAxisTitle);
 
-            // LÍNEAS DE LA OMS (si la métrica es en Gramos)
+            // LÍNEAS DE LA OMS
             const whoGroup = svg.select(".who-group");
             if (metricaAzucar === 'gr') {
                 if (whoGroup.selectAll("line").empty()) {
@@ -711,11 +732,6 @@
                 .text("El filtro por tamaño está desactivado en la vista de Promedios.");
             }
 
-            // d3.select("#buscador").on("input", function() {
-            //     textoBusqueda = this.value.toLowerCase();
-            //     if(!bebidaEnFoco) actualizarVistaFiltros();
-            // });
-            
             d3.select(window).on("resize", () => {
                 const nw = container.clientWidth, nh = container.clientHeight;
                 svg.attr("width", nw).attr("height", nh);
