@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
     <style>
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #464040; color: #e0e0e0; overflow: hidden; }
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #141414; color: #e0e0e0; overflow: hidden; }
 
         /* --- Layout --- */
         #dashboard { display: flex; width: 100vw; height: 100vh; }
@@ -49,7 +49,7 @@
         .custom-select:focus { border-color: #00d2ff; }
 
         /* Buscador */
-        .buscador-container { margin-bottom: 15px; }
+        /* .buscador-container { margin-bottom: 15px; }
         #buscador { 
             width: 100%; padding: 10px 12px; border-radius: 5px; 
             border: 1px solid #444; background-color: #222; color: #fff; 
@@ -57,7 +57,7 @@
             transition: border-color 0.2s;
         }
         #buscador:focus { border-color: #00d2ff; }
-        #buscador::placeholder { color: #888; }
+        #buscador::placeholder { color: #888; } */
 
         /* Leyendas Interactivas */
         .legend-item, .size-item {
@@ -84,8 +84,10 @@
         .nutrition-table th { text-align: left; padding: 8px; border-bottom: 1px solid #444; color: #aaa; }
         .nutrition-table td { text-align: right; padding: 8px; border-bottom: 1px solid #333; font-weight: bold; }
         
+        /* Botón de volver e inicio */
         .btn-volver { 
-            margin-top: 20px; padding: 10px; background-color: #00d2ff; color: #000; font-weight: bold; text-align: center;
+            display: block; text-decoration: none; box-sizing: border-box;
+            margin-bottom: 15px; padding: 10px; background-color: #00d2ff; color: #000; font-weight: bold; text-align: center;
             border: none; border-radius: 5px; cursor: pointer; transition: background 0.2s;
         }
         .btn-volver:hover { background-color: #00a8cc; }
@@ -104,9 +106,10 @@
         /* --- Ejes y Títulos D3 --- */
         svg text { font-family: sans-serif; }
         .chart-title { fill: #ffffff; font-size: 16px; font-weight: bold; letter-spacing: 0.5px; }
-        .axis-label { fill: #ccc; font-size: 12px; font-weight: bold; }
-        .domain, .tick line { stroke: #333; }
-        .tick text { fill: #999; }
+        /* Contraste mejorado idéntico al color del título */
+        .axis-label { fill: #ffffff; font-size: 12px; font-weight: bold; }
+        .domain, .tick line { stroke: #ffffff; stroke-opacity: 0.4; }
+        .tick text { fill: #ffffff; font-weight: 500; }
         .who-line { stroke-dasharray: 5,5; stroke-width: 1.5; }
         .who-label { font-size: 11px; font-weight: bold; }
     </style>
@@ -117,8 +120,7 @@
         <div id="sidebar">
             <div id="vista-leyenda" class="sidebar-view active">
                 
-                <a href="index.html" class="boton" onclick="salirFoco()"> ← Inicio </a>
-                <!-- <div href="index.html" class="btn-volver" onclick="salirFoco()">← Inicio</div> -->
+                <a href="index.html" class="btn-volver">← Inicio</a>
                 
                 <h2>Explorador</h2>
                 
@@ -153,12 +155,12 @@
                     <button id="btn-color-sem" class="btn-toggle">Alerta Nutricional</button>
                 </div>
 
-                <div class="buscador-container" style="margin-top: 10px;">
+                <!-- <div class="buscador-container" style="margin-top: 10px;">
                     <input type="text" id="buscador" placeholder="🔍 Buscar bebida por nombre...">
-                </div>
+                </div> -->
 
                 <div class="instrucciones">
-                    <strong>Pasa el mouse</strong> o <strong>haz clic</strong> para filtrar. <br>👆 <strong>Clic en burbuja</strong> para escuchar azúcar y calorías.
+                    <strong>Pasa el mouse</strong> o <strong>haz clic</strong> para filtrar. <br>👆 <strong>Clic en burbuja</strong> para escuchar el azúcar
                 </div>
                 <div id="legend-container"></div>
                 
@@ -183,7 +185,6 @@
         </div>
     </div>
 
-    <!-- TODO EL JAVASCRIPT VA DENTRO DE ESTE SCRIPT, SIN CREAR UN ARCHIVO .JS SEPARADO -->
     <script>
         // VARIABLES GLOBALES
         let datosOriginales = [];
@@ -222,31 +223,31 @@
         // ==========================================
         // CONFIGURACIÓN DE AUDIO TONE.JS (SONIFICACIÓN)
         // ==========================================
-        // 1. Sintetizador "Glup-Glup" (Calorías / Miel / Grasa)
-        const lowpassMiel = new Tone.Filter(600, "lowpass").toDestination();
+        // 1. Sintetizador "Glup" Lento y Grave (Calorías)
+        const lowpassMiel = new Tone.Filter(350, "lowpass").toDestination();
         const glupSynth = new Tone.MembraneSynth({
-            pitchDecay: 0.08,
-            octaves: 2.5,
+            pitchDecay: 0.15,
+            octaves: 1.8,
             oscillator: { type: "sine" },
             envelope: {
-                attack: 0.01,
-                decay: 0.35,
-                sustain: 0.01,
-                release: 0.4
+                attack: 0.02,
+                decay: 0.65,    // Glup más extendido y lento
+                sustain: 0.02,
+                release: 0.7
             }
         }).connect(lowpassMiel);
 
         // 2. Sintetizador "Granos de Azúcar" (azucar_pct)
         const sugarFilter = new Tone.Filter({
-            frequency: 4500,
+            frequency: 1800,   // Frecuencia reducida para sonido de esquirlas/cristal tenue
             type: "highpass"
         }).toDestination();
 
         const sugarSynth = new Tone.NoiseSynth({
-            noise: { type: "white" },
+            noise: { type: "pink" }, // Ruido más orgánico y suave que el ruido blanco puro
             envelope: {
-                attack: 0.005,
-                decay: 0.04,
+                attack: 0.002,
+                decay: 0.025,   // Toque percusivo corto tipo chasquido de esquirla
                 sustain: 0
             }
         }).connect(sugarFilter);
@@ -254,7 +255,7 @@
         // Función para simular la cascada de granitos
         function reproducirGranosAzucar(cantidadGranos, startTime) {
             for (let i = 0; i < cantidadGranos; i++) {
-                const delay = (i * 0.025) + (Math.random() * 0.015);
+                const delay = (i * 0.035) + (Math.random() * 0.02);
                 sugarSynth.triggerAttackRelease("32n", startTime + delay);
             }
         }
@@ -451,13 +452,25 @@
             // Más calorías -> tono más grave / bajo (miel espesa)
             const calPitchScale = d3.scaleLinear()
                 .domain([0, maxCal || 500])
-                .range([180, 50])
+                .range([90, 35])
                 .clamp(true);
 
-            // Más concentración de azúcar -> más granos cayendo
+            // Volumen del Glup: más calorías = más fuerte (-20dB a +2dB)
+            const calVolumeScale = d3.scaleLinear()
+                .domain([0, maxCal || 500])
+                .range([-20, 2])
+                .clamp(true);
+
+            // Cantidad de esquirlas de azúcar
             const sugarGrainsScale = d3.scaleLinear()
                 .domain([0, maxAzucarPct || 20])
-                .range([3, 16])
+                .range([2, 12])
+                .clamp(true);
+
+            // Volumen del azúcar: más azúcar = más fuerte (-24dB a -3dB)
+            const sugarVolumeScale = d3.scaleLinear()
+                .domain([0, maxAzucarPct || 20])
+                .range([-24, -3])
                 .clamp(true);
 
             // EJES
@@ -473,7 +486,7 @@
             svg.select(".x-axis-label").transition().duration(800)
                 .attr("x", width / 2).attr("y", height - 20).style("text-anchor", "middle").text(nombresVariables[variableX]);
             
-            const yAxisTitle = metricaAzucar === 'pct' ? "Concentración de Azúcar Normalizada (g/100ml)" : "Azúcar Total (gramos)";
+            const yAxisTitle = metricaAzucar === 'pct' ? "Concentración de Azúcar (g/100ml)" : "Azúcar Total (gramos)";
             svg.select(".y-axis-label").transition().duration(800)
                 .attr("transform", "rotate(-90)").attr("x", -height / 2).attr("y", 20).style("text-anchor", "middle").text(yAxisTitle);
 
@@ -563,16 +576,19 @@
 
                     const now = Tone.now();
 
-                    // 1. Sonido Miel/Grasa "Glup-Glup" basado en Calorías
+                    // 1. Sonido Glup lento modulando volumen por Calorías
                     const cal = Number(d['Calories (Cal)']) || 0;
                     const glupFreq = calPitchScale(cal);
-                    glupSynth.triggerAttackRelease(glupFreq, "8n", now);
-                    // glupSynth.triggerAttackRelease(glupFreq * 0.85, "8n", now + 0.12);
+                    const glupVol = calVolumeScale(cal);
+                    glupSynth.volume.setValueAtTime(glupVol, now);
+                    glupSynth.triggerAttackRelease(glupFreq, "4n", now);
 
-                    // 2. Sonido Granos de Azúcar cayendo basado en azucar_pct
+                    // 2. Sonido Esquirlas suaves modulando volumen por Azúcar
                     const azucar = Number(d.azucar_pct) || 0;
                     const numGranos = Math.round(sugarGrainsScale(azucar));
-                    reproducirGranosAzucar(numGranos, now + 0.05);
+                    const sugarVol = sugarVolumeScale(azucar);
+                    sugarSynth.volume.setValueAtTime(sugarVol, now);
+                    reproducirGranosAzucar(numGranos, now + 0.08);
 
                     // Reacción y foco
                     bebidaEnFoco = d.Bebida;
@@ -695,10 +711,10 @@
                 .text("El filtro por tamaño está desactivado en la vista de Promedios.");
             }
 
-            d3.select("#buscador").on("input", function() {
-                textoBusqueda = this.value.toLowerCase();
-                if(!bebidaEnFoco) actualizarVistaFiltros();
-            });
+            // d3.select("#buscador").on("input", function() {
+            //     textoBusqueda = this.value.toLowerCase();
+            //     if(!bebidaEnFoco) actualizarVistaFiltros();
+            // });
             
             d3.select(window).on("resize", () => {
                 const nw = container.clientWidth, nh = container.clientHeight;
