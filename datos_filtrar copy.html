@@ -19,10 +19,40 @@
             flex: 0 0 320px; 
             background-color: #1a1a1a; padding: 20px;
             box-shadow: 4px 0 15px rgba(0,0,0,0.5); overflow-y: auto; z-index: 10;
-            display: flex; flex-direction: column;
+            display: none; /* MODIFICADO: Estado inicial cerrado */
+            flex-direction: column;
         }
         
         #viz-container { flex: 1; position: relative; overflow: hidden; cursor: default; }
+
+        /* Botón de apertura del Menú */
+        #btn-open-sidebar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 20;
+            background-color: #222;
+            color: #fff;
+            border: 1px solid #444;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            display: block;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            transition: background 0.2s;
+        }
+        #btn-open-sidebar:hover { background-color: #333; }
+
+        /* Cabecera del sidebar (para botón de cierre) */
+        .sidebar-header {
+            display: flex; justify-content: flex-end; margin-bottom: 5px;
+        }
+        #btn-close-sidebar {
+            background: none; border: none; color: #aaa; font-size: 1.5em; cursor: pointer; transition: color 0.2s;
+        }
+        #btn-close-sidebar:hover { color: #fff; }
 
         /* --- Vistas del Sidebar --- */
         .sidebar-view { display: none; flex-direction: column; height: 100%; }
@@ -116,6 +146,10 @@
 
     <div id="dashboard">
         <div id="sidebar">
+            <div class="sidebar-header">
+                <button id="btn-close-sidebar" title="Cerrar menú">✕</button>
+            </div>
+            
             <div id="vista-leyenda" class="sidebar-view active">
                 
                 <a href="index.html" class="btn-volver">← Inicio</a>
@@ -124,8 +158,9 @@
                 
                 <div class="instrucciones" style="margin-bottom: 5px;">Densidad de datos:</div>
                 <div class="control-group">
-                    <button id="btn-vista-todas" class="btn-toggle active">Todos los Vasos</button>
-                    <button id="btn-vista-promedios" class="btn-toggle">Promedios</button>
+                    <button id="btn-vista-todas" class="btn-toggle">Todos los Vasos</button>
+                    <!-- MODIFICADO: Estado inicial Promedios -->
+                    <button id="btn-vista-promedios" class="btn-toggle active">Promedios</button>
                 </div>
 
                 <!-- SELECTOR DE EJE X -->
@@ -142,15 +177,17 @@
                 <!-- SELECTOR DE EJE Y -->
                 <div class="instrucciones" style="margin-bottom: 5px; margin-top: 10px;">Métrica de Azúcar (Eje Y):</div>
                 <div class="control-group">
-                    <button id="btn-azucar-pct" class="btn-toggle active">Concentración (%)</button>
-                    <button id="btn-azucar-gr" class="btn-toggle">Gramos Totales</button>
+                    <button id="btn-azucar-pct" class="btn-toggle">Concentración (%)</button>
+                    <!-- MODIFICADO: Estado inicial Gramos -->
+                    <button id="btn-azucar-gr" class="btn-toggle active">Gramos Totales</button>
                 </div>
 
                 <!-- MODO DE COLOR (SEMÁFORO) -->
                 <div class="instrucciones" style="margin-bottom: 5px; margin-top: 5px;">Codificación de Color:</div>
                 <div class="control-group">
-                    <button id="btn-color-cat" class="btn-toggle active">Categoría</button>
-                    <button id="btn-color-sem" class="btn-toggle">Alerta Nutricional</button>
+                    <button id="btn-color-cat" class="btn-toggle">Categoría</button>
+                    <!-- MODIFICADO: Estado inicial Semáforo -->
+                    <button id="btn-color-sem" class="btn-toggle active">Alerta Nutricional</button>
                 </div>
 
                 <div class="instrucciones">
@@ -174,23 +211,25 @@
         </div>
         
         <div id="viz-container">
+            <button id="btn-open-sidebar">☰ Menú</button>
             <div id="tooltip" class="tooltip"></div>
         </div>
     </div>
 
     <script>
-        // VARIABLES GLOBALES
+        // VARIABLES GLOBALES (MODIFICADAS SEGÚN ESTADO INICIAL REQUERIDO)
         let datosOriginales = [];
         let datosPromedios = [];
-        let modoVista = 'todas'; 
-        let metricaAzucar = 'pct'; 
+        let modoVista = 'promedios'; 
+        let metricaAzucar = 'gr'; 
         let variableX = 'Calories (Cal)'; 
-        let modoColor = 'categoria'; 
+        let modoColor = 'semaforo'; 
         
         let filtroCategoria = null; 
         let filtroTamano = null;
         let textoBusqueda = "";
         let bebidaEnFoco = null; 
+        let instantRedraw = false; // Bandera para redibujado con 0 animaciones
 
         const nombresVariables = {
             'Calories (Cal)': 'Calorías',
@@ -227,6 +266,35 @@
             autostart: false,
             fadeOut: 0.1
         }).toDestination();
+
+        // CONTROL DE SIDEBAR ACORDEÓN CERO ANIMACIÓN
+        function toggleSidebar(open) {
+            const sidebar = document.getElementById('sidebar');
+            const btnOpen = document.getElementById('btn-open-sidebar');
+            
+            if (open) {
+                sidebar.style.display = 'flex';
+                btnOpen.style.display = 'none';
+            } else {
+                sidebar.style.display = 'none';
+                btnOpen.style.display = 'block';
+            }
+            
+            // Redibujado inmediato anulando transiciones de D3
+            instantRedraw = true;
+            const container = document.getElementById('viz-container');
+            const svg = d3.select("#viz-container svg");
+            if (!svg.empty()) {
+                svg.attr("width", container.clientWidth).attr("height", container.clientHeight);
+                dibujarVisualizacion(modoVista === 'todas' ? datosOriginales : datosPromedios);
+                // Asegurar que las opacidades/colores se mantengan actualizados tras el redibujado instantáneo
+                document.dispatchEvent(new CustomEvent('actualizarViz'));
+            }
+            instantRedraw = false;
+        }
+
+        document.getElementById('btn-open-sidebar').addEventListener('click', () => toggleSidebar(true));
+        document.getElementById('btn-close-sidebar').addEventListener('click', () => toggleSidebar(false));
 
         // DETERMINACIÓN DE COLOR
         function getColor(d) {
@@ -347,7 +415,8 @@
                 svg.append("text").attr("class", "y-axis-label");
                 svg.append("g").attr("class", "bubble-group");
 
-                dibujarVisualizacion(datosOriginales);
+                // MODIFICADO: Renderizar según estado inicial (datosPromedios)
+                dibujarVisualizacion(modoVista === 'todas' ? datosOriginales : datosPromedios);
             })
             .catch(error => {
                 console.error("ERROR DETALLADO:", error);
@@ -406,9 +475,14 @@
 
             const svg = d3.select("#viz-container svg").attr("width", width).attr("height", height);
 
+            // CONTROLADORES DE ANIMACIÓN: 0ms si el menú lateral se activa, animaciones originales si no.
+            const tDuration = instantRedraw ? 0 : 800;
+            const tDurationShort = instantRedraw ? 0 : 500;
+            const tDurationExit = instantRedraw ? 0 : 300;
+
             // 1. TÍTULO GENERAL DEL GRÁFICO
             svg.select(".chart-title")
-                .transition().duration(500)
+                .transition().duration(tDurationShort)
                 .attr("x", width / 2)
                 .attr("y", 30)
                 .attr("text-anchor", "middle")
@@ -429,19 +503,16 @@
             // ==========================================
             // ESCALAS DE SONIDO CALIBRADAS PARA AUDIOS REALES
             // ==========================================
-            // Duración del Glup: mínimo 1.0s, máximo 3.5s según el valor de X
             const durationScaleX = d3.scaleLinear()
                 .domain([0, maxValX || 100])
                 .range([1.0, 3.5])
                 .clamp(true);
 
-            // Volumen del Glup: mayor valor en X = mayor volumen (-6dB a +4dB)
             const calVolumeScale = d3.scaleLinear()
                 .domain([0, maxValX || 100])
                 .range([2, 8])
                 .clamp(true);
 
-            // Volumen del azúcar: mayor porcentaje de azúcar = mayor volumen (-16dB a +2dB)
             const sugarVolumeScale = d3.scaleLinear()
                 .domain([0, maxAzucarPct || 20])
                 .range([-16, 2])
@@ -453,7 +524,7 @@
             const yAxis = d3.axisLeft(yScale).tickFormat(d => d + yAxisFormat);
 
             const gX = svg.select(".x-axis");
-            gX.transition().duration(800)
+            gX.transition().duration(tDuration)
                 .attr("transform", `translate(0,${height - margin.bottom})`)
                 .call(xAxis);
 
@@ -467,7 +538,7 @@
                 .style("stroke-opacity", "0.6");
 
             const gY = svg.select(".y-axis");
-            gY.transition().duration(800)
+            gY.transition().duration(tDuration)
                 .attr("transform", `translate(${margin.left},0)`)
                 .call(yAxis);
 
@@ -480,14 +551,14 @@
                 .style("stroke", "#ffffff")
                 .style("stroke-opacity", "0.6");
 
-            svg.select(".x-axis-label").transition().duration(800)
+            svg.select(".x-axis-label").transition().duration(tDuration)
                 .attr("x", width / 2).attr("y", height - 20)
                 .style("text-anchor", "middle")
                 .style("fill", "#ffffff")
                 .text(nombresVariables[variableX]);
             
             const yAxisTitle = metricaAzucar === 'pct' ? "Concentración de Azúcar (g/100ml)" : "Azúcar Total (gramos)";
-            svg.select(".y-axis-label").transition().duration(800)
+            svg.select(".y-axis-label").transition().duration(tDuration)
                 .attr("transform", "rotate(-90)").attr("x", -height / 2).attr("y", 20)
                 .style("text-anchor", "middle")
                 .style("fill", "#ffffff")
@@ -502,21 +573,21 @@
                     whoGroup.append("text").attr("class", "who-label text-25").attr("fill", "#ffa502").text("OMS Ideal (25g)");
                     whoGroup.append("text").attr("class", "who-label text-50").attr("fill", "#ff4757").text("OMS Límite (50g)");
                 }
-                whoGroup.transition().duration(800).style("opacity", 1);
+                whoGroup.transition().duration(tDuration).style("opacity", 1);
                 
-                whoGroup.select(".line-25").transition().duration(800)
+                whoGroup.select(".line-25").transition().duration(tDuration)
                     .attr("x1", margin.left).attr("x2", width - margin.right)
                     .attr("y1", yScale(25)).attr("y2", yScale(25));
-                whoGroup.select(".text-25").transition().duration(800)
+                whoGroup.select(".text-25").transition().duration(tDuration)
                     .attr("x", width - margin.right - 10).attr("y", yScale(25) - 5).style("text-anchor", "end");
                 
-                whoGroup.select(".line-50").transition().duration(800)
+                whoGroup.select(".line-50").transition().duration(tDuration)
                     .attr("x1", margin.left).attr("x2", width - margin.right)
                     .attr("y1", yScale(50)).attr("y2", yScale(50));
-                whoGroup.select(".text-50").transition().duration(800)
+                whoGroup.select(".text-50").transition().duration(tDuration)
                     .attr("x", width - margin.right - 10).attr("y", yScale(50) - 5).style("text-anchor", "end");
             } else {
-                whoGroup.transition().duration(500).style("opacity", 0);
+                whoGroup.transition().duration(tDurationShort).style("opacity", 0);
             }
 
             const OPACIDAD_BASE = modoVista === 'todas' ? 0.4 : 0.7; 
@@ -587,17 +658,15 @@
                     const volGlup = calVolumeScale(valX);
                     const volAzucar = sugarVolumeScale(azucar);
 
-                    // 1. REPRODUCIR SONIDO GLUP (EJE X) - Con presencia y sin corte abrupto
+                    // 1. REPRODUCIR SONIDO GLUP
                     if (glupPlayer.loaded) {
                         glupPlayer.stop();
-                        glupPlayer.volume.value = volGlup; // Asignación directa de ganancia reforzada
-                        
-                        // Velocidad controlada para mantener el cuerpo natural de la burbuja
+                        glupPlayer.volume.value = volGlup;
                         glupPlayer.playbackRate = Math.max(0.7, 1.3 - (duracionGlup * 0.2));
                         glupPlayer.start(now, 0, Math.max(duracionGlup, 2.0));
                     }
 
-                    // 2. REPRODUCIR SONIDO AZÚCAR (EN PARALELO) - Atenuado para evitar enmascaramiento
+                    // 2. REPRODUCIR SONIDO AZÚCAR
                         if (sugarPlayer.loaded) {
                             sugarPlayer.stop();
                             sugarPlayer.volume.value = volAzucar;
@@ -606,18 +675,20 @@
 
                         // Foco visual y ficha
                         bebidaEnFoco = d.Bebida;
-                        document.dispatchEvent(new CustomEvent('actualizarViz'));
                         mostrarDetalle(d, colorScaleLeche(d.tipo_leche));
+                        
+                        // Apertura automática instantánea del menú sin transiciones
+                        toggleSidebar(true);
                     });
 
             const bubbles = bubblesEnter.merge(bubbleSelection);
-            bubbles.transition().duration(800)
+            bubbles.transition().duration(tDuration)
                 .attr("cx", d => xScale(Number(d[variableX]) || 0))
                 .attr("cy", d => yScale(getAzucar(d) || 0))
                 .attr("r", d => sizeScale(Number(d.volumen_ml) || 473))
                 .attr("fill", d => getColor(d));
 
-            bubbleSelection.exit().transition().duration(300).attr("r", 0).remove();
+            bubbleSelection.exit().transition().duration(tDurationExit).attr("r", 0).remove();
 
             function esVisible(d) {
                 const coincideTexto = d.Bebida.toLowerCase().includes(textoBusqueda);
@@ -628,7 +699,8 @@
             }
 
             function actualizarVistaFiltros() {
-                svg.selectAll(".bubble").transition().duration(400)
+                // Utiliza transiciones dinámicas según si el layout está cambiando por toggleSidebar
+                svg.selectAll(".bubble").transition().duration(instantRedraw ? 0 : 400)
                     .style("opacity", d => {
                         if (bebidaEnFoco) return d.Bebida === bebidaEnFoco ? 1 : 0.02; 
                         if (!esVisible(d)) return 0.02; 
