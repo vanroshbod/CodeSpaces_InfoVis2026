@@ -1,112 +1,3 @@
-<!-- <!DOCTYPE html> -->
-<!-- <html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi GitHub Pages</title>
-    <style>
-        body {
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            line-height: 1.6;
-            margin: 0;
-            padding: 0;
-            background-color: #f4f4f9;
-            color: #333;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-        header {
-            background-color: #24292e;
-            color: #fff;
-            text-align: center;
-            padding: 2rem 1rem;
-        }
-        main {
-            flex: 1;
-            max-width: 800px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-        footer {
-            background-color: #24292e;
-            color: #fff;
-            text-align: center;
-            padding: 1rem;
-            font-size: 0.9rem;
-        }
-        /* Estilo para la imagen principal */
-        .imagen-principal {
-            max-width: 100%;
-            height: auto;
-            display: block;
-            margin: 1.5rem auto;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-        }
-        /* Estilos para el botón */
-        .boton {
-            display: inline-block;
-            background-color: #0366d6;
-            color: white;
-            padding: 10px 20px;
-            text-decoration: none;
-            border-radius: 6px;
-            font-weight: bold;
-            margin-top: 20px;
-            transition: background-color 0.3s;
-        }
-        .boton:hover {
-            background-color: #005cc5;
-        }
-    </style>
-</head> -->
-<!-- <body> -->
-
-    <!-- <header>
-        <h1>Proyecto de Visualización Nutricional de Bebidas de Starbucks</h1>
-        <p>Visualización de Información (IIC2026)</p>
-    </header>
-
-    <main> -->
-        <!-- <h2>Entregas del Proyecto de Visualización de la Información:</h2>
-        <p>En esta página se presentan las entregas del proyecto de visualización de la información: "Visualización Nutricional
-            de Bebidas de Starbucks".</p>
-        
-        <img src="data/starbucks_principal.jpg" alt="Visualización Nutricional Starbucks" class="imagen-principal"> -->
-
-        <!-- <h2>Primera Parte:</h2>
-        <p>Esta parte del proyecto se enfoca en la visualización que permite
-            representar las proporciones nutricionales de las bebidas de Starbucks de manera amigable para el
-            usuario.</p>
-        <p>Se busca que esta visualización muestre al espectador las concentraciones de azúcares no nutricionales
-            presentes en diferentes bebidas de la cafetería Starbucks.</p>
-        <p>Para este propósito se utilizó un dataset de la plataforma Kaggle
-            (<a href="https://www.kaggle.com/datasets/ashishpatel26/starbucks_drinkmenu_expanded/data" target="_blank" rel="noopener noreferrer">"Starbucks Drink Menu Dataset"</a>).</p>
-        <p>Cómo primera idea, se realiza un gráfico de burbujas que muetra las proporcioes de azúcares
-            respecto al eje Y y a la vez entrega información sobre otros contenidos nutricionales: Calorías, Proteínas,
-            Grasas Totales y Cafeína. A continuación en el siguiente botón puede acceder a lo que corresponde a la
-            Primera Entrega del proyecto:</p> -->
-        
-        <!-- <a href="idea_1.html" class="boton">Ir a la Idea 1</a> -->
-        <!-- <a href="datos_filtrar.html" class="boton">1° Entrega</a>
-        <a href="datos_filtrar copy.html" class="boton">2° Entrega</a>
-        <h4>Desarrollado por:</h4> -->
-        <!-- <ul>
-            <li>Camila Matamala</li>
-            <li>Fernanda Oyarzún</li>
-            <li>Octavia Robledo</li>
-        </ul> -->
-
-    <!-- </main>
-
-    <footer>
-        <p>&copy; 2026 - Equipo 15</p>
-    </footer> -->
-
-<!-- </body>
-</html> -->
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -403,7 +294,7 @@
                 </div>
 
                 <!-- SELECTOR DE EJE X -->
-                <div class="control-group" style="flex-direction: column; gap: 5px; margin-top: 5px;">
+                <!-- <div class="control-group" style="flex-direction: column; gap: 5px; margin-top: 5px;">
                     <label style="font-size: 0.85em; color: #888;">Analizar en Eje X:</label>
                     <select id="select-eje-x" class="custom-select">
                         <option value="Calories (Cal)">Calorías Totales (Cal)</option>
@@ -411,7 +302,7 @@
                         <option value="Protein (g)">Proteínas (g) - "Nutrición"</option>
                         <option value="Total Fat (g)">Grasas Totales (g)</option>
                     </select>
-                </div>
+                </div> -->
 
                 <!-- SELECTOR DE EJE Y -->
                 <div class="instrucciones" style="margin-bottom: 5px; margin-top: 10px;">Métrica de Azúcar (Eje Y):</div>
@@ -769,19 +660,37 @@
             // ==========================================
             // ESCALAS DE SONIDO CALIBRADAS PARA AUDIOS REALES
             // ==========================================
-            const durationScaleX = d3.scaleLinear()
-                .domain([0, maxValX || 100])
-                .range([1.0, 3.5])
-                .clamp(true);
+            // const durationScaleX = d3.scaleLinear()
+            //     .domain([0, maxValX || 100])
+            //     .range([1.0, 3.5])
+            //     .clamp(true);
 
+            // const calVolumeScale = d3.scaleLinear()
+            //     .domain([0, maxValX || 100])
+            //     .range([2, 8])
+            //     .clamp(true);
+
+            // const sugarVolumeScale = d3.scaleLinear()
+            //     .domain([0, maxAzucarPct || 20])
+            //     .range([-16, 2])
+            //     .clamp(true);
+
+            // ==========================================
+            // ESCALAS DE SONIDO CALIBRADAS
+            // ==========================================
+            // Duración fija sincronizada para ambos sonidos
+            const duracionCompartida = 2.5;
+
+            // Volumen del Glup directamente proporcional a la variable del Eje X (-16dB a +4dB)
             const calVolumeScale = d3.scaleLinear()
-                .domain([0, maxValX || 100])
-                .range([2, 8])
+                .domain([5, maxValX || 110])
+                .range([-10, 10])
                 .clamp(true);
 
+            // Volumen del azúcar directamente proporcional a azucar_pct (-18dB a +2dB)
             const sugarVolumeScale = d3.scaleLinear()
                 .domain([0, maxAzucarPct || 20])
-                .range([-16, 2])
+                .range([-18, 2])
                 .clamp(true);
 
             // EJES
@@ -916,33 +825,32 @@
                     }
 
                     const now = Tone.now();
-                    const valX = Number(d[variableX]) || 0;
-                    const azucar = Number(d.azucar_pct) || 0;
+                        const valX = Number(d[variableX]) || 0;
+                        const azucar = Number(d.azucar_pct) || 0;
 
-                    const duracionGlup = durationScaleX(valX);
-                    const volGlup = calVolumeScale(valX);
-                    const volAzucar = sugarVolumeScale(azucar);
+                        const volGlup = calVolumeScale(valX);
+                        const volAzucar = sugarVolumeScale(azucar);
 
-                    // 1. REPRODUCIR SONIDO GLUP
-                    if (glupPlayer.loaded) {
-                        glupPlayer.stop();
-                        glupPlayer.volume.value = volGlup;
-                        glupPlayer.playbackRate = Math.max(0.7, 1.3 - (duracionGlup * 0.2));
-                        glupPlayer.start(now, 0, Math.max(duracionGlup, 2.0));
-                    }
+                        // 1. REPRODUCIR SONIDO GLUP (EJE X)
+                        if (glupPlayer.loaded) {
+                            glupPlayer.stop();
+                            glupPlayer.volume.value = volGlup; // Volumen directamente proporcional al Eje X
+                            glupPlayer.playbackRate = 1.0;     // Velocidad natural (sin distorsión de tono)
+                            glupPlayer.start(now, 0, duracionCompartida);
+                        }
 
-                    // 2. REPRODUCIR SONIDO AZÚCAR
-                    if (sugarPlayer.loaded) {
-                        sugarPlayer.stop();
-                        sugarPlayer.volume.value = volAzucar;
-                        sugarPlayer.start(now, 0, duracionGlup);
-                    }
+                        // 2. REPRODUCIR SONIDO AZÚCAR (MISMA DURACIÓN Y EN PARALELO)
+                        if (sugarPlayer.loaded) {
+                            sugarPlayer.stop();
+                            sugarPlayer.volume.value = volAzucar; // Volumen directamente proporcional a azucar_pct
+                            sugarPlayer.start(now, 0, duracionCompartida);
+                        }
 
-                    // Foco visual y ficha
-                    bebidaEnFoco = d.Bebida;
-                    mostrarDetalle(d, colorScaleLeche(d.tipo_leche));
-                    
-                    toggleSidebar(true);
+                        // Foco visual y ficha
+                        bebidaEnFoco = d.Bebida;
+                        mostrarDetalle(d, colorScaleLeche(d.tipo_leche));
+                        
+                        toggleSidebar(true);
                 });
 
             const bubbles = bubblesEnter.merge(bubbleSelection);
