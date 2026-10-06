@@ -6,8 +6,8 @@
     <title>Universo Nutricional - InfoVis IIC2026</title>
     
     <!-- Librerías desde CDN -->
-    <script src="[https://d3js.org/d3.v7.min.js](https://d3js.org/d3.v7.min.js)"></script>
-    <script src="[https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js](https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js)"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
     <style>
         body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #464040; color: #e0e0e0; overflow: hidden; }
@@ -84,10 +84,8 @@
         .nutrition-table th { text-align: left; padding: 8px; border-bottom: 1px solid #444; color: #aaa; }
         .nutrition-table td { text-align: right; padding: 8px; border-bottom: 1px solid #333; font-weight: bold; }
         
-        /* Botón de volver e inicio */
         .btn-volver { 
-            display: block; text-decoration: none; box-sizing: border-box;
-            margin-bottom: 15px; padding: 10px; background-color: #00d2ff; color: #000; font-weight: bold; text-align: center;
+            margin-top: 20px; padding: 10px; background-color: #00d2ff; color: #000; font-weight: bold; text-align: center;
             border: none; border-radius: 5px; cursor: pointer; transition: background 0.2s;
         }
         .btn-volver:hover { background-color: #00a8cc; }
@@ -106,12 +104,9 @@
         /* --- Ejes y Títulos D3 --- */
         svg text { font-family: sans-serif; }
         .chart-title { fill: #ffffff; font-size: 16px; font-weight: bold; letter-spacing: 0.5px; }
-        
-        /* Contraste mejorado idéntico al color del título */
-        .axis-label { fill: #ffffff; font-size: 12px; font-weight: bold; }
-        .domain, .tick line { stroke: #ffffff; stroke-opacity: 0.4; }
-        .tick text { fill: #ffffff; font-weight: 500; }
-        
+        .axis-label { fill: #ccc; font-size: 12px; font-weight: bold; }
+        .domain, .tick line { stroke: #333; }
+        .tick text { fill: #999; }
         .who-line { stroke-dasharray: 5,5; stroke-width: 1.5; }
         .who-label { font-size: 11px; font-weight: bold; }
     </style>
@@ -122,7 +117,8 @@
         <div id="sidebar">
             <div id="vista-leyenda" class="sidebar-view active">
                 
-                <a href="index.html" class="btn-volver">← Inicio</a>
+                <a href="index.html" class="boton" onclick="salirFoco()"> ← Inicio </a>
+                <!-- <div href="index.html" class="btn-volver" onclick="salirFoco()">← Inicio</div> -->
                 
                 <h2>Explorador</h2>
                 
@@ -178,7 +174,7 @@
                 <div class="instrucciones" style="margin-top: 15px; text-align: center; color: #00d2ff;">
                     👆 Selecciona otras burbujas iluminadas para comparar.
                 </div>
-                <div class="btn-volver" style="margin-top: 20px;" onclick="salirFoco()">← Restablecer Universo Completo</div>
+                <div class="btn-volver" onclick="salirFoco()">← Restablecer Universo Completo</div>
             </div>
         </div>
         
@@ -187,6 +183,7 @@
         </div>
     </div>
 
+    <!-- TODO EL JAVASCRIPT VA DENTRO DE ESTE SCRIPT, SIN CREAR UN ARCHIVO .JS SEPARADO -->
     <script>
         // VARIABLES GLOBALES
         let datosOriginales = [];
@@ -225,39 +222,39 @@
         // ==========================================
         // CONFIGURACIÓN DE AUDIO TONE.JS (SONIFICACIÓN)
         // ==========================================
-        // 1. Sintetizador "Glup" Lento y Grave (Calorías)
-        const lowpassMiel = new Tone.Filter(350, "lowpass").toDestination();
+        // 1. Sintetizador "Glup-Glup" (Calorías / Miel / Grasa)
+        const lowpassMiel = new Tone.Filter(600, "lowpass").toDestination();
         const glupSynth = new Tone.MembraneSynth({
-            pitchDecay: 0.15,
-            octaves: 1.8,
+            pitchDecay: 0.08,
+            octaves: 2.5,
             oscillator: { type: "sine" },
             envelope: {
-                attack: 0.02,
-                decay: 0.65,    // Glup más extendido y lento
-                sustain: 0.02,
-                release: 0.7
+                attack: 0.01,
+                decay: 0.35,
+                sustain: 0.01,
+                release: 0.4
             }
         }).connect(lowpassMiel);
 
-        // 2. Sintetizador "Esquirlas Suaves" (Azúcar)
+        // 2. Sintetizador "Granos de Azúcar" (azucar_pct)
         const sugarFilter = new Tone.Filter({
-            frequency: 1800,   // Frecuencia reducida para sonido de esquirlas/cristal tenue
+            frequency: 4500,
             type: "highpass"
         }).toDestination();
 
         const sugarSynth = new Tone.NoiseSynth({
-            noise: { type: "pink" }, // Ruido más orgánico y suave que el ruido blanco puro
+            noise: { type: "white" },
             envelope: {
-                attack: 0.002,
-                decay: 0.025,   // Toque percusivo corto tipo chasquido de esquirla
+                attack: 0.005,
+                decay: 0.04,
                 sustain: 0
             }
         }).connect(sugarFilter);
 
-        // Cascada de esquirlas suaves
+        // Función para simular la cascada de granitos
         function reproducirGranosAzucar(cantidadGranos, startTime) {
             for (let i = 0; i < cantidadGranos; i++) {
-                const delay = (i * 0.035) + (Math.random() * 0.02);
+                const delay = (i * 0.025) + (Math.random() * 0.015);
                 sugarSynth.triggerAttackRelease("32n", startTime + delay);
             }
         }
@@ -268,9 +265,9 @@
             
             if (modoColor === 'semaforo') {
                 const azucar = Number(d['Sugars (g)']);
-                if (azucar > 50) return "#ff4757";
-                if (azucar > 25) return "#ffa502";
-                return "#2ed573";
+                if (azucar > 50) return "#ff4757"; // Rojo
+                if (azucar > 25) return "#ffa502"; // Amarillo
+                return "#2ed573"; // Verde
             }
             
             return colorScaleCat(d.Categoria_bebida);
@@ -337,7 +334,7 @@
             return promedios;
         }
 
-        // CARGA DIRECTA DE DATOS
+        // CARGA DIRECTA DEL ARCHIVO JSON data/data_starbucks_detallado.json
         fetch('data/data_starbucks_detallado.json')
             .then(response => {
                 if (!response.ok) throw new Error('Error al cargar data/data_starbucks_detallado.json');
@@ -356,10 +353,12 @@
                 categoriasUnicas = Array.from(new Set(datosOriginales.map(d => d.Categoria_bebida)));
                 colorScaleCat = d3.scaleOrdinal().domain(categoriasUnicas).range(d3.schemeSet3);
 
+                // Inicializar SVG base
                 const container = document.getElementById('viz-container');
                 const svg = d3.select("#viz-container").append("svg")
                     .attr("width", container.clientWidth).attr("height", container.clientHeight);
                 
+                // Elementos estructurales y título general
                 svg.append("text").attr("class", "chart-title");
                 svg.append("g").attr("class", "who-group").style("opacity", 0);
                 svg.append("g").attr("class", "x-axis");
@@ -448,29 +447,17 @@
             const yScale = d3.scaleLinear().domain([-2, maxValY * 1.05]).range([height - margin.bottom, margin.top]);
             const sizeScale = d3.scalePow().exponent(1.5).domain([30, 591]).range([8, 20]); 
             
-            // ESCALAS DE SONIDO DINÁMICAS
-            // Frecuencia baja y lenta para el Glup (calorías)
+            // ESCALAS DE SONIDO
+            // Más calorías -> tono más grave / bajo (miel espesa)
             const calPitchScale = d3.scaleLinear()
                 .domain([0, maxCal || 500])
-                .range([90, 35])
+                .range([180, 50])
                 .clamp(true);
 
-            // Volumen del Glup: más calorías = más fuerte (-20dB a +2dB)
-            const calVolumeScale = d3.scaleLinear()
-                .domain([0, maxCal || 500])
-                .range([-20, 2])
-                .clamp(true);
-
-            // Cantidad de esquirlas de azúcar
+            // Más concentración de azúcar -> más granos cayendo
             const sugarGrainsScale = d3.scaleLinear()
                 .domain([0, maxAzucarPct || 20])
-                .range([2, 12])
-                .clamp(true);
-
-            // Volumen del azúcar: más azúcar = más fuerte (-24dB a -3dB)
-            const sugarVolumeScale = d3.scaleLinear()
-                .domain([0, maxAzucarPct || 20])
-                .range([-24, -3])
+                .range([3, 16])
                 .clamp(true);
 
             // EJES
@@ -576,19 +563,16 @@
 
                     const now = Tone.now();
 
-                    // 1. Sonido Glup lento modulando volumen por Calorías
+                    // 1. Sonido Miel/Grasa "Glup-Glup" basado en Calorías
                     const cal = Number(d['Calories (Cal)']) || 0;
                     const glupFreq = calPitchScale(cal);
-                    const glupVol = calVolumeScale(cal);
-                    glupSynth.volume.setValueAtTime(glupVol, now);
-                    glupSynth.triggerAttackRelease(glupFreq, "4n", now);
+                    glupSynth.triggerAttackRelease(glupFreq, "8n", now);
+                    // glupSynth.triggerAttackRelease(glupFreq * 0.85, "8n", now + 0.12);
 
-                    // 2. Sonido Esquirlas suaves modulando volumen por Azúcar
+                    // 2. Sonido Granos de Azúcar cayendo basado en azucar_pct
                     const azucar = Number(d.azucar_pct) || 0;
                     const numGranos = Math.round(sugarGrainsScale(azucar));
-                    const sugarVol = sugarVolumeScale(azucar);
-                    sugarSynth.volume.setValueAtTime(sugarVol, now);
-                    reproducirGranosAzucar(numGranos, now + 0.08);
+                    reproducirGranosAzucar(numGranos, now + 0.05);
 
                     // Reacción y foco
                     bebidaEnFoco = d.Bebida;
