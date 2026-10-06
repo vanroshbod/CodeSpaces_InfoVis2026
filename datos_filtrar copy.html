@@ -468,7 +468,7 @@
             // Volumen del Glup (audible entre -5dB y +2dB)
             const calVolumeScale = d3.scaleLinear()
                 .domain([0, maxValX || 100])
-                .range([-5, 2])
+                .range([0, 8])
                 .clamp(true);
 
             // Esquirlas de azúcar
