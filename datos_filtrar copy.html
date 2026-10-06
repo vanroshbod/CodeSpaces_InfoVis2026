@@ -96,6 +96,7 @@
         svg text { font-family: sans-serif; }
         .chart-title { fill: #ffffff; font-size: 16px; font-weight: bold; letter-spacing: 0.5px; }
 
+        /* Forzar visualmente el color blanco idéntico al título */
         .axis-label { fill: #ffffff !important; font-size: 12px; font-weight: bold; }
         .x-axis path.domain, .y-axis path.domain,
         .x-axis .tick line, .y-axis .tick line { 
@@ -154,7 +155,7 @@
                 </div>
 
                 <div class="instrucciones">
-                    <strong>Pasa el mouse</strong> o <strong>haz clic</strong> para filtrar. <br>👆 <strong>Clic en burbuja</strong> para escuchar el azúcar
+                    <strong>Pasa el mouse</strong> o <strong>haz clic</strong> para filtrar. <br>👆 <strong>Clic en burbuja</strong> para escuchar el sonido.
                 </div>
                 <div id="legend-container"></div>
                 
@@ -216,19 +217,21 @@
         // ==========================================
         // CONFIGURACIÓN DE AUDIO TONE.JS (SONIFICACIÓN)
         // ==========================================
+        // 1. Sintetizador "Glup" (Eje X) con soporte para sustain y duración variable
         const lowpassMiel = new Tone.Filter(350, "lowpass").toDestination();
         const glupSynth = new Tone.MembraneSynth({
-            pitchDecay: 0.15,
+            pitchDecay: 0.12,
             octaves: 1.8,
             oscillator: { type: "sine" },
             envelope: {
                 attack: 0.02,
-                decay: 0.65,
-                sustain: 0.02,
-                release: 0.7
+                decay: 0.5,
+                sustain: 0.3,   // Permite sostener la duración solicitada
+                release: 0.8
             }
         }).connect(lowpassMiel);
 
+        // 2. Sintetizador "Esquirlas / Caída de Azúcar"
         const sugarFilter = new Tone.Filter({
             frequency: 1800,
             type: "highpass"
@@ -302,13 +305,13 @@
             document.dispatchEvent(new CustomEvent('actualizarViz'));
         }
 
-        // EVITAR QUE CLICS DENTRO DEL SIDEBAR DISPAREN LA SALIDA DE FOCO ACCIDENTALMENTE
+        // EVITAR QUE CLICS EN EL SIDEBAR CIERREN EL DETALLE
         document.getElementById('sidebar').addEventListener('click', function(event) {
             event.stopPropagation();
         });
 
         // CLIC GLOBAL PARA RESTABLECER EN CUALQUIER LUGAR DE LA PANTALLA
-        window.addEventListener('click', function(event) {
+        window.addEventListener('click', function() {
             if (bebidaEnFoco) {
                 salirFoco();
             }
@@ -338,7 +341,7 @@
             return promedios;
         }
 
-        // CARGA DIRECTA DEL ARCHIVO JSON data/data_starbucks_detallado.json
+        // CARGA DIRECTA DEL ARCHIVO JSON
         fetch('data/data_starbucks_detallado.json')
             .then(response => {
                 if (!response.ok) throw new Error('Error al cargar data/data_starbucks_detallado.json');
@@ -357,7 +360,6 @@
                 categoriasUnicas = Array.from(new Set(datosOriginales.map(d => d.Categoria_bebida)));
                 colorScaleCat = d3.scaleOrdinal().domain(categoriasUnicas).range(d3.schemeSet3);
 
-                // Inicializar SVG base
                 const container = document.getElementById('viz-container');
                 const svg = d3.select("#viz-container").append("svg")
                     .attr("width", container.clientWidth).attr("height", container.clientHeight);
@@ -377,7 +379,7 @@
                 alert("Error al cargar datos:\n" + error.message);
             });
 
-        // EVENTOS DE LOS BOTONES
+        // EVENTOS DE BOTONES
         function reDibujar() { dibujarVisualizacion(modoVista === 'todas' ? datosOriginales : datosPromedios); }
 
         d3.select("#btn-vista-todas").on("click", function() {
@@ -443,32 +445,43 @@
 
             const maxValX = d3.max(datosOriginales, d => Number(d[variableX]) || 0);
             const maxValY = d3.max(datosOriginales, d => getAzucar(d) || 0);
-            const maxCal = d3.max(datosOriginales, d => Number(d['Calories (Cal)']) || 0);
             const maxAzucarPct = d3.max(datosOriginales, d => Number(d.azucar_pct) || 0);
 
             const xScale = d3.scaleLinear().domain([-maxValX * 0.05, maxValX * 1.05]).range([margin.left, width - margin.right]);
             const yScale = d3.scaleLinear().domain([-2, maxValY * 1.05]).range([height - margin.bottom, margin.top]);
             const sizeScale = d3.scalePow().exponent(1.5).domain([30, 591]).range([8, 20]); 
             
-            // ESCALAS DE SONIDO
+            // ==========================================
+            // ESCALAS DE SONIDO ACTUALIZADAS
+            // ==========================================
+            // Duración del sonido Glup (Eje X): Mayor valor = mayor duración, mínimo 1.0 segundo
+            const durationScaleX = d3.scaleLinear()
+                .domain([0, maxValX || 100])
+                .range([1.0, 3.2])
+                .clamp(true);
+
+            // Tono base del Glup
             const calPitchScale = d3.scaleLinear()
-                .domain([0, maxCal || 500])
-                .range([90, 35])
+                .domain([0, maxValX || 100])
+                .range([85, 40])
                 .clamp(true);
 
+            // Volumen del Glup
             const calVolumeScale = d3.scaleLinear()
-                .domain([0, maxCal || 500])
-                .range([-20, 2])
+                .domain([0, maxValX || 100])
+                .range([-18, 1])
                 .clamp(true);
 
+            // Cantidad de esquirlas de azúcar
             const sugarGrainsScale = d3.scaleLinear()
                 .domain([0, maxAzucarPct || 20])
-                .range([2, 12])
+                .range([3, 14])
                 .clamp(true);
 
+            // Volumen del azúcar
             const sugarVolumeScale = d3.scaleLinear()
                 .domain([0, maxAzucarPct || 20])
-                .range([-24, -3])
+                .range([-22, -3])
                 .clamp(true);
 
             // EJES
@@ -557,7 +570,6 @@
                 .attr("stroke", "#000").attr("stroke-width", 0.5)
                 .style("opacity", OPACIDAD_BASE);
 
-            // EVENTOS DE INTERACCIÓN
             bubblesEnter
                 .on("mouseover", function(event, d) {
                     svg.selectAll(".bubble").style("opacity", b => {
@@ -597,36 +609,40 @@
                     tooltip.style("opacity", 0);
                 })
                 .on("click", async function(event, d) {
-                    // DETIENE LA PROPAGACIÓN para no activar inmediatamente el clic de fondo que saldría del foco
-                    event.stopPropagation();
+                    event.stopPropagation(); // Detiene propagación para no ejecutar el window.click inmediatamente
 
                     if (Tone.context.state !== 'running') {
                         await Tone.start();
                     }
 
                     const now = Tone.now();
+                    const valX = Number(d[variableX]) || 0;
 
-                    // 1. Sonido Glup lento modulando volumen por Calorías
-                    const cal = Number(d['Calories (Cal)']) || 0;
-                    const glupFreq = calPitchScale(cal);
-                    const glupVol = calVolumeScale(cal);
+                    // 1. SONIDO GLUP (EJE X)
+                    // Mayor valor en X -> mayor duración (mínimo 1.0s)
+                    const duracionGlup = durationScaleX(valX);
+                    const glupFreq = calPitchScale(valX);
+                    const glupVol = calVolumeScale(valX);
+
                     glupSynth.volume.setValueAtTime(glupVol, now);
-                    glupSynth.triggerAttackRelease(glupFreq, "4n", now);
+                    // Disparo con la duración calculada en segundos
+                    glupSynth.triggerAttackRelease(glupFreq, duracionGlup, now);
 
-                    // 2. Sonido Esquirlas suaves modulando volumen por Azúcar
+                    // 2. SONIDO ESQUIRLAS DE AZÚCAR (EN PARALELO)
                     const azucar = Number(d.azucar_pct) || 0;
                     const numGranos = Math.round(sugarGrainsScale(azucar));
                     const sugarVol = sugarVolumeScale(azucar);
-                    sugarSynth.volume.setValueAtTime(sugarVol, now);
-                    reproducirGranosAzucar(numGranos, now + 0.08);
 
-                    // Reacción y foco
+                    sugarSynth.volume.setValueAtTime(sugarVol, now);
+                    // Inicia simultáneamente en 'now'
+                    reproducirGranosAzucar(numGranos, now);
+
+                    // Reacción visual y ficha de detalle
                     bebidaEnFoco = d.Bebida;
                     document.dispatchEvent(new CustomEvent('actualizarViz'));
                     mostrarDetalle(d, colorScaleLeche(d.tipo_leche));
                 });
 
-            // Merge Enter + Update
             const bubbles = bubblesEnter.merge(bubbleSelection);
             bubbles.transition().duration(800)
                 .attr("cx", d => xScale(Number(d[variableX]) || 0))
@@ -636,7 +652,6 @@
 
             bubbleSelection.exit().transition().duration(300).attr("r", 0).remove();
 
-            // FILTRADO COMBINADO
             function esVisible(d) {
                 const coincideTexto = d.Bebida.toLowerCase().includes(textoBusqueda);
                 const coincideCat = filtroCategoria ? d.Categoria_bebida === filtroCategoria : true;
@@ -662,7 +677,6 @@
 
             document.addEventListener('actualizarViz', actualizarVistaFiltros);
 
-            // LEYENDAS CATEGORÍA / SEMÁFORO
             const legendContainer = d3.select("#legend-container");
             legendContainer.html(""); 
             
@@ -704,7 +718,6 @@
                 });
             }
 
-            // LEYENDA TAMAÑOS
             const sizeLegendContainer = d3.select("#size-legend-container");
             sizeLegendContainer.html(""); 
             const maxDiametro = sizeScale(591) * 2; 
