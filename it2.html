@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viaje Metabólico - InfoVis IIC2026</title>
+    
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #141414; color: #e0e0e0; overflow: hidden; display: flex; height: 100vh; }
+
+        /* --- Panel de Controles --- */
+        #sidebar {
+            flex: 0 0 380px; background-color: #1a1a1a; padding: 30px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.5); overflow-y: auto; z-index: 10;
+            display: flex; flex-direction: column; box-sizing: border-box;
+        }
+
+        #sidebar h2 { color: #fff; font-size: 1.4em; border-bottom: 2px solid #00d2ff; padding-bottom: 10px; margin-top: 0; }
+        .paso-titulo { font-size: 1.1em; color: #00d2ff; margin: 20px 0 10px 0; font-weight: bold; }
+        .instrucciones { font-size: 0.85em; color: #888; margin-bottom: 10px; line-height: 1.4; }
+
+        #search-box {
+            width: 100%; padding: 12px; background-color: #222; border: 1px solid #444;
+            color: #fff; border-radius: 6px; margin-bottom: 10px; box-sizing: border-box; font-size: 1em;
+        }
+        #search-box:focus { outline: none; border-color: #00d2ff; }
+
+        .lista-opciones {
+            display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; padding-right: 5px;
+        }
+
+        .opcion-btn {
+            background-color: #222; border: 1px solid #333; color: #ccc; padding: 12px;
+            text-align: left; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-size: 0.9em;
+        }
+        .opcion-btn:hover:not(:disabled) { background-color: #333; border-color: #555; }
+        .opcion-btn.active { background-color: #00d2ff; color: #000; font-weight: bold; border-color: #00d2ff; }
+        .opcion-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        .grid-opciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+        .btn-accion {
+            background-color: #00d2ff; color: #000; font-weight: bold; text-align: center;
+            padding: 15px; border-radius: 6px; border: none; cursor: pointer; font-size: 1.1em;
+            transition: all 0.2s; margin-top: 10px;
+        }
+        .btn-accion:hover:not(:disabled) { background-color: #00a8cc; transform: scale(1.02); }
+        .btn-accion:disabled { background-color: #444; color: #777; cursor: not-allowed; transform: none; }
+
+        /* --- Panel de Visualización --- */
+        #viz-container { 
+            flex: 1; position: relative; overflow: hidden;
+            background-color: #141414; 
+        }
+
+        /* Título Directo y Descriptivo */
+        #viz-header { position: absolute; top: 40px; left: 50px; z-index: 20; max-width: 650px; }
+        .viz-title { color: #fff; font-size: 2.2em; font-weight: bold; margin: 0 0 10px 0; line-height: 1.1; }
+        .viz-title span { color: #00d2ff; }
+        .viz-subtitle { color: #aaa; font-size: 1.05em; line-height: 1.5; margin: 0; }
+
+        /* Zonas SVG Claras */
+        .zona-optima { fill: rgba(0, 210, 255, 0.05); }
+        .zona-crash { fill: rgba(255, 71, 87, 0.08); }
+        
+        .axis text { fill: #888; font-size: 12px; font-weight: bold; }
+        .axis path, .axis line { stroke: #444; stroke-dasharray: 4,4; }
+        
+        .baseline { stroke: #fff; stroke-width: 2; stroke-dasharray: 8,4; opacity: 0.5; }
+        .baseline-label { fill: #fff; font-size: 12px; font-weight: bold; opacity: 0.7; }
+
+        .crash-label { fill: #ff4757; font-size: 16px; font-weight: bold; opacity: 0; }
+        .peak-label { fill: #00d2ff; font-size: 16px; font-weight: bold; opacity: 0; }
+
+        /* Tooltip */
+        .tooltip {
+            position: absolute; background: rgba(20, 20, 20, 0.95); border: 1px solid #00d2ff;
+            padding: 12px; border-radius: 8px; pointer-events: none; opacity: 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.7); z-index: 100; font-size: 0.9em;
+        }
+
+        /* Ficha resumen flotante */
+        #ficha-resumen {
+            position: absolute; top: 40px; right: 40px; background: rgba(20,20,20,0.9);
+            padding: 20px; border-radius: 12px; border: 1px solid #333;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 200px; opacity: 0; transition: opacity 0.3s;
+        }
+        .stat-val { font-size: 1.5em; font-weight: bold; color: #fff; }
+        .stat-label { font-size: 0.85em; color: #aaa; text-transform: uppercase; margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <h2>Diseña tu Bebida</h2>
+        <div class="instrucciones">Elige qué vas a tomar y prepárate para simular el recorrido.</div>
+
+        <div class="paso-titulo">1. Elige tu Bebida</div>
+        <input type="text" id="search-box" placeholder="Buscar... (Ej: Frappuccino)">
+        <div id="lista-bebidas" class="lista-opciones"></div>
+
+        <div class="paso-titulo">2. Tamaño</div>
+        <div id="lista-tamanos" class="grid-opciones">
+            <button class="opcion-btn" disabled>Selecciona una bebida</button>
+        </div>
+
+        <div class="paso-titulo">3. Tipo de Leche</div>
+        <div id="lista-leches" class="lista-opciones">
+            <button class="opcion-btn" disabled>Selecciona un tamaño</button>
+        </div>
+
+        <div class="paso-titulo">4. Simulación</div>
+        <button id="btn-iniciar" class="btn-accion" disabled>Comenzar Recorrido 🎢</button>
+    </div>
+
+    <div id="viz-container">
+        
+        <div id="viz-header">
+            <h1 class="viz-title">¿Qué le hará esta bebida a <span>tu cuerpo?</span></h1>
+            <p class="viz-subtitle">Observa tu futuro a 4 horas. El azúcar provoca un ascenso brusco y un colapso. La cafeína te mantiene estable, pero te cobrará factura cuando la adenosina vuelva a entrar de golpe. Presiona <b>Comenzar Recorrido</b>.</p>
+        </div>
+
+        <!-- SVG D3 -->
+        
+        <div id="ficha-resumen">
+            <div class="stat-label">Azúcar Total</div>
+            <div id="res-azucar" class="stat-val">0g</div>
+            
+            <div class="stat-label" style="margin-top: 15px;">Cafeína</div>
+            <div id="res-cafeina" class="stat-val">0mg</div>
+
+            <div id="alerta-crash" style="margin-top: 15px; color: #ff4757; font-weight: bold; font-size: 0.85em; display: none;">
+                ⚠️ ALERTA: Colapso energético inminente.
+            </div>
+        </div>
+        
+        <div id="tooltip" class="tooltip"></div>
+    </div>
+
+    <script>
+        // Audios (Tone.js)
+        const glupPlayer = new Tone.Player({ url: "data/glup_glup_sound.wav", autostart: false }).toDestination();
+
+        let datosOriginales = [];
+        let agrupadoPorBebida = {};
+        
+        let estadoActual = {
+            bebida: null,
+            tamano: null,
+            leche: null,
+            datosFinales: null
+        };
+
+        const jerarquiaTamanos = ["Solo", "Doppio", "Short", "Tall", "Grande", "Venti"];
+
+        // Variables D3
+        let svg, width, height, margin;
+        let xScale, yScale, pathTrack, carritoGrupo, carritoIcono;
+        let zonaOptima, zonaCrash, baseline, xAxisGroup, yAxisGroup;
+        let tooltipLine;
+
+        fetch('data/data_starbucks_detallado.json')
+            .then(res => res.json())
+            .then(data => {
+                data.forEach(d => {
+                    let leche = d.tamano_preparacion_bebida.replace(d.tamano_vaso, '').trim();
+                    d.tipo_leche = leche !== "" ? leche : "Sin Leche";
+                    d['Sugars (g)'] = d['Sugars (g)'] !== undefined ? d['Sugars (g)'] : (d.azucar_pct * d.volumen_ml / 100);
+                });
+
+                datosOriginales = data.filter(d => d.Bebida && d.tamano_vaso);
+                agrupadoPorBebida = d3.group(datosOriginales, d => d.Bebida);
+                
+                inicializarD3();
+                renderizarBebidasVis(Array.from(agrupadoPorBebida.keys()).sort());
+            });
+
+        // ==========================================
+        // MOTOR DE ESTADO Y UI REACTIVA
+        // ==========================================
+
+        const searchBox = document.getElementById('search-box');
+        searchBox.addEventListener('input', (e) => {
+            const termino = e.target.value.toLowerCase();
+            const nombres = Array.from(agrupadoPorBebida.keys()).filter(n => n.toLowerCase().includes(termino)).sort();
+            renderizarBebidasVis(nombres);
+        });
+
+        function obtenerTamanoMasParecido(tamanosDisponibles, tamanoAnterior) {
+            if (!tamanoAnterior) return tamanosDisponibles[0];
+            const idxAnt = jerarquiaTamanos.indexOf(tamanoAnterior);
+            if (idxAnt === -1) return tamanosDisponibles[0]; 
+
+            let mejorTamano = tamanosDisponibles[0];
+            let minDist = Infinity;
+            tamanosDisponibles.forEach(tam => {
+                const idx = jerarquiaTamanos.indexOf(tam);
+                if (idx !== -1) {
+                    const dist = Math.abs(idx - idxAnt);
+                    if (dist < minDist) { minDist = dist; mejorTamano = tam; }
+                }
+            });
+            return mejorTamano;
+        }
+
+        function procesarSeleccion(tipo, valor) {
+            if (tipo === 'bebida') estadoActual.bebida = valor;
+            else if (tipo === 'tamano') estadoActual.tamano = valor;
+            else if (tipo === 'leche') estadoActual.leche = valor;
+
+            if (!estadoActual.bebida) return;
+
+            const variantesBebida = agrupadoPorBebida.get(estadoActual.bebida);
+            const tamanosDisp = Array.from(new Set(variantesBebida.map(v => v.tamano_vaso)));
+            
+            if (tamanosDisp.length === 1) estadoActual.tamano = tamanosDisp[0];
+            else if (!tamanosDisp.includes(estadoActual.tamano)) estadoActual.tamano = obtenerTamanoMasParecido(tamanosDisp, estadoActual.tamano);
+
+            const variantesTamano = variantesBebida.filter(v => v.tamano_vaso === estadoActual.tamano);
+            const lechesDisp = Array.from(new Set(variantesTamano.map(v => v.tipo_leche)));
+
+            if (lechesDisp.length === 1) estadoActual.leche = lechesDisp[0]; 
+            else if (!lechesDisp.includes(estadoActual.leche)) estadoActual.leche = lechesDisp.includes("2% Milk") ? "2% Milk" : (lechesDisp.includes("Sin Leche") ? "Sin Leche" : lechesDisp[0]);
+
+            estadoActual.datosFinales = variantesTamano.find(v => v.tipo_leche === estadoActual.leche);
+
+            const termino = document.getElementById('search-box').value.toLowerCase();
+            const nombres = Array.from(agrupadoPorBebida.keys()).filter(n => n.toLowerCase().includes(termino)).sort();
+            
+            renderizarBebidasVis(nombres);
+            renderizarTamanosVis(tamanosDisp);
+            renderizarLechesVis(lechesDisp);
+
+            if (estadoActual.datosFinales) {
+                dibujarMontanaRusa();
+                document.getElementById('btn-iniciar').disabled = false;
+                reproducirSonidoSeleccion();
+            }
+        }
+
+        function renderizarBebidasVis(nombres) {
+            const contenedor = document.getElementById('lista-bebidas');
+            contenedor.innerHTML = '';
+            nombres.forEach(nombre => {
+                const btn = document.createElement('button');
+                btn.className = 'opcion-btn';
+                if (estadoActual.bebida === nombre) btn.classList.add('active');
+                btn.innerText = nombre;
+                btn.onclick = () => procesarSeleccion('bebida', nombre);
+                contenedor.appendChild(btn);
+            });
+        }
+
+        function renderizarTamanosVis(tamanosDisponibles) {
+            const contenedor = document.getElementById('lista-tamanos');
+            contenedor.innerHTML = '';
+            tamanosDisponibles.sort((a, b) => jerarquiaTamanos.indexOf(a) - jerarquiaTamanos.indexOf(b));
+
+            tamanosDisponibles.forEach(tam => {
+                const btn = document.createElement('button');
+                btn.className = 'opcion-btn';
+                if (estadoActual.tamano === tam) btn.classList.add('active');
+                btn.innerText = tam;
+                btn.onclick = () => procesarSeleccion('tamano', tam);
+                contenedor.appendChild(btn);
+            });
+        }
+
+        function renderizarLechesVis(lechesDisponibles) {
+            const contenedor = document.getElementById('lista-leches');
+            contenedor.innerHTML = '';
+            lechesDisponibles.forEach(leche => {
+                const btn = document.createElement('button');
+                btn.className = 'opcion-btn';
+                if (estadoActual.leche === leche) btn.classList.add('active');
+                btn.innerText = leche;
+                btn.onclick = () => procesarSeleccion('leche', leche);
+                contenedor.appendChild(btn);
+            });
+        }
+
+        async function reproducirSonidoSeleccion() {
+            if (Tone.context.state !== 'running') await Tone.start();
+            if (glupPlayer.loaded) { glupPlayer.stop(); glupPlayer.volume.value = -10; glupPlayer.start(Tone.now(), 0, 0.5); }
+        }
+
+        // ==========================================
+        // D3 - MONTAÑA RUSA METABÓLICA
+        // ==========================================
+        
+        function inicializarD3() {
+            const container = document.getElementById('viz-container');
+            width = container.clientWidth;
+            height = container.clientHeight;
+            margin = { top: 180, right: 60, bottom: 60, left: 80 };
+
+            svg = d3.select("#viz-container").append("svg").attr("width", width).attr("height", height);
+
+            // Escalas
+            xScale = d3.scaleLinear().domain([0, 240]).range([margin.left, width - margin.right]);
+            yScale = d3.scaleLinear().domain([-100, 100]).range([height - margin.bottom, margin.top]);
+
+            // Zonas de fondo
+            zonaOptima = svg.append("rect").attr("class", "zona-optima")
+                .attr("x", margin.left).attr("width", width - margin.left - margin.right);
+            zonaCrash = svg.append("rect").attr("class", "zona-crash")
+                .attr("x", margin.left).attr("width", width - margin.left - margin.right);
+
+            // Ejes
+            xAxisGroup = svg.append("g").attr("class", "axis").attr("transform", `translate(0,${height - margin.bottom})`);
+            yAxisGroup = svg.append("g").attr("class", "axis").attr("transform", `translate(${margin.left},0)`);
+
+            svg.append("text").attr("x", width / 2).attr("y", height - 20).style("fill", "#888").style("text-anchor", "middle").text("Tiempo Transcurrido (Minutos)");
+            svg.append("text").attr("transform", "rotate(-90)").attr("x", -height / 2).attr("y", 30).style("fill", "#888").style("text-anchor", "middle").text("Nivel de Alteración Energética");
+
+            // Línea Base (0)
+            baseline = svg.append("line").attr("class", "baseline").attr("x1", margin.left).attr("x2", width - margin.right);
+            svg.append("text").attr("class", "baseline-label").attr("x", margin.left + 10).text("Línea Base (Estado Normal)");
+
+            // Etiquetas dinámicas
+            svg.append("text").attr("class", "peak-label").attr("text-anchor", "middle").text("⚡ Subidón");
+            svg.append("text").attr("class", "crash-label").attr("text-anchor", "middle").text("😵 Colapso");
+
+            // Pista de Montaña Rusa
+            pathTrack = svg.append("path")
+                .attr("fill", "none")
+                .attr("stroke", "#00d2ff")
+                .attr("stroke-width", 6)
+                .attr("stroke-linecap", "round");
+
+            // Línea guía del hover
+            tooltipLine = svg.append("line")
+                .attr("stroke", "#00d2ff").attr("stroke-width", 1).attr("stroke-dasharray", "4,4")
+                .style("opacity", 0).attr("y1", margin.top).attr("y2", height - margin.bottom);
+
+            // Carrito Animado
+            carritoGrupo = svg.append("g").style("opacity", 0);
+            carritoGrupo.append("circle").attr("r", 14).attr("fill", "#1a1a2e").attr("stroke", "#00d2ff").attr("stroke-width", 3);
+            carritoIcono = carritoGrupo.append("text").attr("text-anchor", "middle").attr("y", 5).style("font-size", "16px").text("🎢");
+
+            // Overlay para Tooltip
+            svg.append("rect")
+                .attr("width", width - margin.left - margin.right).attr("height", height - margin.top - margin.bottom)
+                .attr("transform", `translate(${margin.left},${margin.top})`)
+                .style("fill", "none").style("pointer-events", "all")
+                .on("mousemove", handleMouseMove)
+                .on("mouseout", () => { d3.select("#tooltip").style("opacity", 0); tooltipLine.style("opacity", 0); });
+
+            // Asignar evento al botón de inicio
+            document.getElementById('btn-iniciar').addEventListener('click', animarCarritoYFrecuencia);
+        }
+
+        // Nuevo modelo matemático integrando el rebote de la Adenosina
+        function generarPuntosMontanaRusa(bebida) {
+            const S = Number(bebida['Sugars (g)']) || 0;
+            const C = Number(bebida.Caffeine_num) || 0;
+            const P = Number(bebida['Protein (g)']) || 0;
+            const F = Number(bebida['Total Fat (g)']) || 0;
+            const amortiguador = 1 + (P + F) / 20; 
+
+            const puntos = [];
+            for (let t = 0; t <= 240; t += 2) {
+                
+                let eCaffeine = 0;
+                if (C > 0) {
+                    // La cafeína hace efecto, pero la adenosina se acumula y golpea tarde (cerca del minuto 200)
+                    const absorcion = (C * 0.8) * (Math.exp(-t / 180) - Math.exp(-t / 45));
+                    const reboteAdenosina = (C * 0.5) * Math.exp(-Math.pow(t - 220, 2) / 3000); 
+                    eCaffeine = absorcion - reboteAdenosina;
+                }
+                
+                let eSugar = 0;
+                if (S > 0) {
+                    const pico = (S * 2 / amortiguador) * (Math.exp(-t / 30) - Math.exp(-t / 10));
+                    const crash = (S * 1.5 / amortiguador) * Math.exp(-Math.pow(t - 100, 2) / 1500);
+                    eSugar = pico - crash;
+                }
+                
+                puntos.push({ minuto: t, energia: eCaffeine + eSugar });
+            }
+            return puntos;
+        }
+
+        function dibujarMontanaRusa() {
+            const data = estadoActual.datosFinales;
+            const curva = generarPuntosMontanaRusa(data);
+            svg.datum(curva);
+
+            // Resetea visualmente el carrito antes del próximo recorrido
+            carritoGrupo.style("opacity", 0);
+
+            // Actualizar panel resumen
+            document.getElementById('ficha-resumen').style.opacity = 1;
+            document.getElementById('res-azucar').innerText = Number(data['Sugars (g)']).toFixed(1) + " g";
+            document.getElementById('res-cafeina').innerText = Number(data.Caffeine_num).toFixed(1) + " mg";
+
+            const yMax = d3.max(curva, d => d.energia);
+            const yMin = d3.min(curva, d => d.energia);
+            const dominioAbs = Math.max(50, Math.abs(yMax * 1.2), Math.abs(yMin * 1.2));
+            
+            yScale.domain([-dominioAbs, dominioAbs]);
+
+            // Animar Ejes y Zonas
+            xAxisGroup.transition().duration(800).call(d3.axisBottom(xScale).tickValues([0, 30, 60, 90, 120, 180, 240]));
+            yAxisGroup.transition().duration(800).call(d3.axisLeft(yScale).tickFormat("")); 
+
+            const yCero = yScale(0);
+            zonaOptima.transition().duration(800).attr("y", margin.top).attr("height", yCero - margin.top);
+            zonaCrash.transition().duration(800).attr("y", yCero).attr("height", height - margin.bottom - yCero);
+            
+            baseline.transition().duration(800).attr("y1", yCero).attr("y2", yCero);
+            svg.select(".baseline-label").transition().duration(800).attr("y", yCero - 5);
+
+            document.getElementById('alerta-crash').style.display = yMin < -15 ? 'block' : 'none';
+
+            // Dibujar la pista estática
+            const generadorLinea = d3.line().x(d => xScale(d.minuto)).y(d => yScale(d.energia)).curve(d3.curveCatmullRom);
+            pathTrack.transition().duration(800).attr("d", generadorLinea(curva));
+
+            // Posicionar etiquetas Peak y Crash
+            const pMax = curva.reduce((prev, current) => (prev.energia > current.energia) ? prev : current);
+            const pMin = curva.reduce((prev, current) => (prev.energia < current.energia) ? prev : current);
+
+            svg.select(".peak-label").transition().duration(800).style("opacity", pMax.energia > 20 ? 1 : 0)
+                .attr("x", xScale(pMax.minuto)).attr("y", yScale(pMax.energia) - 15);
+            
+            svg.select(".crash-label").transition().duration(800).style("opacity", pMin.energia < -15 ? 1 : 0)
+                .attr("x", xScale(pMin.minuto)).attr("y", yScale(pMin.energia) + 25);
+        }
+
+        async function animarCarritoYFrecuencia() {
+            if (!estadoActual.datosFinales) return;
+            
+            // Deshabilitar botón durante el viaje
+            const btn = document.getElementById('btn-iniciar');
+            btn.disabled = true;
+
+            if (Tone.context.state !== 'running') await Tone.start();
+            
+            const pathNode = pathTrack.node();
+            const totalLength = pathNode.getTotalLength();
+            
+            carritoGrupo.style("opacity", 1);
+            
+            const yMin = yScale.domain()[0];
+            carritoIcono.text(yMin < -30 ? "😵" : "🎢");
+
+            // Configurar Sintetizador (Sonificación)
+            const synth = new Tone.Synth({
+                oscillator: { type: "sine" },
+                envelope: { attack: 0.1, decay: 0.2, sustain: 1, release: 0.5 }
+            }).toDestination();
+            
+            synth.triggerAttack("C4");
+
+            // Escala de frecuencia: Más alto en pantalla (Y pixel menor) = Más agudo
+            const dominioAbs = Math.max(Math.abs(yScale.domain()[0]), Math.abs(yScale.domain()[1]));
+            const freqScale = d3.scaleLinear()
+                .domain([yScale(-dominioAbs), yScale(dominioAbs)]) // de abajo a arriba en pantalla
+                .range([100, 800]) // de grave a agudo (Hz)
+                .clamp(true);
+
+            carritoGrupo.transition()
+                .duration(4000) // 4 segundos de recorrido
+                .ease(d3.easeLinear) 
+                .attrTween("transform", function() {
+                    return function(t) {
+                        const p = pathNode.getPointAtLength(t * totalLength);
+                        // Ajustar el sonido en tiempo real según la altura del carrito
+                        synth.frequency.value = freqScale(p.y);
+                        return `translate(${p.x}, ${p.y})`;
+                    }
+                })
+                .on("end", function() {
+                    synth.triggerRelease();
+                    btn.disabled = false; // Rehabilitar botón
+                });
+        }
+
+        function handleMouseMove(event) {
+            const curva = svg.datum();
+            if (!curva) return;
+            
+            const [mouseX] = d3.pointer(event);
+            const minutoMouse = Math.round(xScale.invert(mouseX));
+            if(minutoMouse < 0 || minutoMouse > 240) return;
+
+            const punto = curva.find(d => d.minuto === minutoMouse) || curva[Math.floor(minutoMouse/2)];
+            if(!punto) return;
+
+            tooltipLine.style("opacity", 1).attr("x1", xScale(punto.minuto)).attr("x2", xScale(punto.minuto));
+
+            const tooltip = d3.select("#tooltip");
+            const colorEnergia = punto.energia >= 0 ? '#00d2ff' : '#ff4757';
+            const estadoTexto = punto.energia >= 20 ? 'Alerta / Eufórico' : (punto.energia < -15 ? 'Fatiga / Crash' : 'Estable');
+
+            tooltip.style("opacity", 1)
+                .html(`
+                    <div style="font-weight:bold; color:#fff; border-bottom:1px solid #444; padding-bottom:5px; margin-bottom:5px;">Minuto ${punto.minuto}</div>
+                    <div>Estado: <span style="color:${colorEnergia}; font-weight:bold;">${estadoTexto}</span></div>
+                    <div>Alteración Neta: ${punto.energia.toFixed(1)}</div>
+                `)
+                .style("left", (event.pageX + 15) + "px")
+                .style("top", (event.pageY - 20) + "px");
+        }
+    </script>
+</body>
+</html>

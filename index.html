@@ -19,31 +19,16 @@
             flex: 0 0 320px; 
             background-color: #1a1a1a; padding: 20px;
             box-shadow: 4px 0 15px rgba(0,0,0,0.5); overflow-y: auto; z-index: 10;
-            display: none;
+            display: flex; /* Modificado: Siempre visible */
             flex-direction: column;
         }
         
         #viz-container { flex: 1; position: relative; overflow: hidden; cursor: default; }
 
-        /* Botón de apertura del Menú lateral */
-        #btn-open-sidebar {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 20;
-            background-color: #222;
-            color: #fff;
-            border: 1px solid #444;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 1em;
-            font-weight: bold;
-            display: block;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            transition: background 0.2s;
+        /* Ocultamos los botones de abrir y cerrar menú */
+        #btn-open-sidebar, .sidebar-header {
+            display: none !important;
         }
-        #btn-open-sidebar:hover { background-color: #333; }
 
         /* Botón flotante de Información (i) en la esquina superior derecha */
         #btn-info-modal {
@@ -423,17 +408,7 @@
 
         // CONTROL DE SIDEBAR ACORDEÓN
         function toggleSidebar(open) {
-            const sidebar = document.getElementById('sidebar');
-            const btnOpen = document.getElementById('btn-open-sidebar');
-            
-            if (open) {
-                sidebar.style.display = 'flex';
-                btnOpen.style.display = 'none';
-            } else {
-                sidebar.style.display = 'none';
-                btnOpen.style.display = 'block';
-            }
-            
+            // Eliminamos la lógica de display, el menú siempre está visible
             instantRedraw = true;
             const container = document.getElementById('viz-container');
             const svg = d3.select("#viz-container svg");
@@ -634,6 +609,15 @@
             const tDurationShort = instantRedraw ? 0 : 500;
             const tDurationExit = instantRedraw ? 0 : 300;
 
+            const getAzucar = d => metricaAzucar === 'pct' ? Number(d.azucar_pct) : Number(d['Sugars (g)']);
+            
+            function esVisible(d) {
+                const coincideTexto = d.Bebida.toLowerCase().includes(textoBusqueda);
+                const coincideCat = filtroCategoria ? d.Categoria_bebida === filtroCategoria : true;
+                const coincideTam = (filtroTamano && modoVista === 'todas') ? d.tamano_vaso === filtroTamano : true;
+                return coincideTexto && coincideCat && coincideTam;
+            }
+
             // 1. TÍTULO GENERAL DEL GRÁFICO
             svg.select(".chart-title")
                 .transition().duration(tDurationShort)
@@ -642,9 +626,35 @@
                 .attr("text-anchor", "middle")
                 .text(`Índices de azúcar en bebidas Starbucks respecto a ${nombresVariables[variableX]}`);
 
-            data.sort((a, b) => (b.volumen_ml || 0) - (a.volumen_ml || 0));
+            // NUEVO: Subtítulo de storytelling - Que los datos hablen
+            svg.selectAll(".story-text").remove();
+            
+            let exceden = 0, totalVisible = 0;
+            data.forEach(d => {
+                if (esVisible(d)) {
+                    totalVisible++;
+                    if (getAzucar(d) > 50) exceden++;
+                }
+            });
+            const pctExceden = totalVisible > 0 ? Math.round((exceden / totalVisible) * 100) : 0;
+            const subtitleText = metricaAzucar === 'gr' 
+                ? (pctExceden > 0 ? `⚠️ El ${pctExceden}% de las bebidas mostradas (${exceden}) superan el límite máximo diario de azúcar (50g)` : `✅ Ninguna de las bebidas mostradas supera el límite máximo de la OMS`)
+                : `🔍 Mostrando porcentaje de concentración de azúcar por cada 100ml.`;
 
-            const getAzucar = d => metricaAzucar === 'pct' ? Number(d.azucar_pct) : Number(d['Sugars (g)']);
+            svg.append("text")
+                .attr("class", "story-text")
+                .attr("x", width / 2)
+                .attr("y", 50)
+                .attr("text-anchor", "middle")
+                .style("fill", "#00d2ff")
+                .style("font-size", "13px")
+                .style("font-style", "italic")
+                .style("opacity", 0)
+                .text(subtitleText)
+                .transition().duration(800)
+                .style("opacity", 1);
+
+            data.sort((a, b) => (b.volumen_ml || 0) - (a.volumen_ml || 0));
 
             const maxValX = d3.max(datosOriginales, d => Number(d[variableX]) || 0);
             const maxValY = d3.max(datosOriginales, d => getAzucar(d) || 0);
@@ -715,15 +725,16 @@
                 .style("fill", "#ffffff")
                 .text(yAxisTitle);
 
-            // LÍNEAS DE LA OMS
+            // LÍNEAS DE LA OMS 
             const whoGroup = svg.select(".who-group");
+            whoGroup.selectAll("*").remove(); // Limpiamos para evitar duplicados en el redibujado
+            
             if (metricaAzucar === 'gr') {
-                if (whoGroup.selectAll("line").empty()) {
-                    whoGroup.append("line").attr("class", "who-line line-25").attr("stroke", "#ffa502");
-                    whoGroup.append("line").attr("class", "who-line line-50").attr("stroke", "#ff4757");
-                    whoGroup.append("text").attr("class", "who-label text-25").attr("fill", "#ffa502").text("OMS Ideal (25g)");
-                    whoGroup.append("text").attr("class", "who-label text-50").attr("fill", "#ff4757").text("OMS Límite (50g)");
-                }
+                whoGroup.append("line").attr("class", "who-line line-25").attr("stroke", "#ffa502");
+                whoGroup.append("line").attr("class", "who-line line-50").attr("stroke", "#ff4757");
+                whoGroup.append("text").attr("class", "who-label text-25").attr("fill", "#ffa502").text("OMS Ideal (25g)");
+                whoGroup.append("text").attr("class", "who-label text-50").attr("fill", "#ff4757").text("OMS Límite (50g)");
+
                 whoGroup.transition().duration(tDuration).style("opacity", 1);
                 
                 whoGroup.select(".line-25").transition().duration(tDuration)
@@ -879,20 +890,22 @@
                     const textX = Math.max(margin.left + 10, targetX - 165);
                     const textY = Math.max(margin.top + 30, targetY - 60);
 
-                    // Textos explicativos
+                    // Textos explicativos y "viscerales"
+                    const nombreCorto = maxItem.Bebida.length > 25 ? maxItem.Bebida.substring(0, 25) + "..." : maxItem.Bebida;
+                    const cucharaditasMax = (getAzucar(maxItem) / 4).toFixed(1);
+
                     annotationGroup.append("text")
                         .attr("x", textX)
                         .attr("y", textY)
-                        .text("¡MÁXIMA CONCENTRACIÓN!")
+                        .text(`¡${nombreCorto}!`)
                         .attr("fill", "#ff4757")
                         .style("font-weight", "bold")
                         .style("font-size", "14px");
 
-                    const nombreCorto = maxItem.Bebida.length > 25 ? maxItem.Bebida.substring(0, 25) + "..." : maxItem.Bebida;
                     annotationGroup.append("text")
                         .attr("x", textX)
                         .attr("y", textY + 18)
-                        .text(nombreCorto)
+                        .text(`Bomba de azúcar: ${cucharaditasMax} cucharaditas 🥄`)
                         .attr("fill", "#ffffff")
                         .style("font-size", "12px")
                         .style("opacity", "0.9");
@@ -907,13 +920,6 @@
                         .attr("stroke-width", 2)
                         .attr("marker-end", "url(#arrowhead)");
                 }
-            }
-
-            function esVisible(d) {
-                const coincideTexto = d.Bebida.toLowerCase().includes(textoBusqueda);
-                const coincideCat = filtroCategoria ? d.Categoria_bebida === filtroCategoria : true;
-                const coincideTam = (filtroTamano && modoVista === 'todas') ? d.tamano_vaso === filtroTamano : true;
-                return coincideTexto && coincideCat && coincideTam;
             }
 
             function actualizarVistaFiltros() {

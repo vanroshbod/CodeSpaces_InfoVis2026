@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arma tu Vaso - InfoVis IIC2026</title>
+    
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #141414; color: #e0e0e0; overflow: hidden; display: flex; height: 100vh; }
+
+        /* --- Panel de Controles (Sidebar) --- */
+        #sidebar {
+            flex: 0 0 380px; 
+            background-color: #1a1a1a; 
+            padding: 30px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.5); 
+            overflow-y: auto; 
+            z-index: 10;
+            display: flex; 
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        #sidebar h2 { color: #fff; font-size: 1.4em; border-bottom: 2px solid #00d2ff; padding-bottom: 10px; margin-top: 0; }
+        .paso-titulo { font-size: 1.1em; color: #00d2ff; margin: 20px 0 10px 0; font-weight: bold; }
+        .instrucciones { font-size: 0.85em; color: #888; margin-bottom: 10px; line-height: 1.4; }
+
+        /* Buscador y listas */
+        #search-box {
+            width: 100%; padding: 12px; background-color: #222; border: 1px solid #444;
+            color: #fff; border-radius: 6px; margin-bottom: 10px; box-sizing: border-box; font-size: 1em;
+        }
+        #search-box:focus { outline: none; border-color: #00d2ff; }
+
+        .lista-opciones {
+            display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .opcion-btn {
+            background-color: #222; border: 1px solid #333; color: #ccc; padding: 12px;
+            text-align: left; border-radius: 6px; cursor: pointer; transition: all 0.2s;
+            font-size: 0.9em;
+        }
+        .opcion-btn:hover:not(:disabled) { background-color: #333; border-color: #555; }
+        .opcion-btn.active { background-color: #00d2ff; color: #000; font-weight: bold; border-color: #00d2ff; }
+        .opcion-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+        /* Cuadrícula para tamaños y leches */
+        .grid-opciones {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+        }
+
+        /* --- Panel de Visualización --- */
+        #viz-container { 
+            flex: 1; position: relative; display: flex; align-items: center; justify-content: center;
+            background: radial-gradient(circle at center, #2a2a2a 0%, #141414 100%);
+        }
+
+        /* Título Informativo (Storytelling) */
+        #viz-header {
+            position: absolute; top: 40px; left: 50px; z-index: 20; max-width: 500px;
+        }
+        .viz-title {
+            color: #fff; font-size: 2.2em; font-weight: bold; margin: 0 0 10px 0; line-height: 1.1;
+        }
+        .viz-title span { color: #00d2ff; }
+        .viz-subtitle {
+            color: #aaa; font-size: 1.05em; line-height: 1.5; margin: 0;
+        }
+
+        /* Panel de métricas flotante */
+        #metricas-panel {
+            position: absolute; top: 40px; right: 40px; background: rgba(20,20,20,0.9);
+            padding: 20px; border-radius: 12px; border: 1px solid #333;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); min-width: 250px; opacity: 0; transition: opacity 0.3s;
+        }
+        .metrica-valor { font-size: 3em; font-weight: bold; margin: 10px 0; line-height: 1; }
+        .metrica-label { font-size: 0.9em; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .alerta-oms {
+            padding: 10px; margin-top: 15px; font-size: 0.85em; display: none; font-weight: bold; border-radius: 4px;
+        }
+        .alerta-precaucion {
+            background: rgba(255, 165, 2, 0.1); border-left: 4px solid #ffa502; color: #ffa502;
+        }
+        .alerta-peligro {
+            background: rgba(255, 71, 87, 0.1); border-left: 4px solid #ff4757; color: #ff4757;
+        }
+
+        /* SVG Textos OMS */
+        .oms-label-25 { fill: #ffa502; font-size: 11px; font-weight: bold; letter-spacing: 1px; }
+        .oms-line-25 { stroke: #ffa502; stroke-width: 2; stroke-dasharray: 6,4; }
+        
+        .oms-label-50 { fill: #ff4757; font-size: 11px; font-weight: bold; letter-spacing: 1px; }
+        .oms-line-50 { stroke: #ff4757; stroke-width: 2; stroke-dasharray: 6,4; }
+        
+        /* Animación de terrones cayendo */
+        .terron { fill: #fff; opacity: 0.8; rx: 4; ry: 4; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <h2>Arma tu Vaso</h2>
+        <div class="instrucciones">Configura tu bebida paso a paso y descubre cuánta azúcar realmente estás consumiendo.</div>
+
+        <div class="paso-titulo">1. Elige tu Bebida</div>
+        <input type="text" id="search-box" placeholder="Ej: Frappuccino, Latte, Mocha...">
+        <div id="lista-bebidas" class="lista-opciones"></div>
+
+        <div class="paso-titulo">2. Tamaño</div>
+        <div id="lista-tamanos" class="grid-opciones">
+            <button class="opcion-btn" disabled>Selecciona una bebida</button>
+        </div>
+
+        <div class="paso-titulo">3. Tipo de Leche</div>
+        <div id="lista-leches" class="lista-opciones">
+            <button class="opcion-btn" disabled>Selecciona un tamaño</button>
+        </div>
+    </div>
+
+    <div id="viz-container">
+        
+        <!-- Título Informativo -->
+        <div id="viz-header">
+            <h1 class="viz-title">¿Cuánta azúcar <span>esconde tu vaso?</span></h1>
+            <p class="viz-subtitle">Observa cómo se llena tu bebida y descubre físicamente su impacto frente a los límites recomendados por la Organización Mundial de la Salud.</p>
+        </div>
+
+        <!-- El SVG se inserta vía D3 aquí -->
+        
+        <div id="metricas-panel">
+            <div class="metrica-label">Contenido de Azúcar</div>
+            <div id="valor-azucar" class="metrica-valor" style="color: #fff;">0g</div>
+            <div id="equivalencia-cucharadas" style="color: #ccc; font-size: 0.9em; margin-bottom: 15px;">0 cucharaditas 🥄</div>
+            
+            <div class="metrica-label">Impacto vs Máximo OMS</div>
+            <div id="barra-impacto" style="width: 100%; height: 8px; background: #333; border-radius: 4px; overflow: hidden; margin-top: 8px;">
+                <div id="fill-impacto" style="width: 0%; height: 100%; background: #00d2ff; transition: width 0.5s, background 0.5s;"></div>
+            </div>
+            <div id="pct-impacto" style="text-align: right; font-size: 0.85em; color: #888; margin-top: 5px;">0% del máximo diario</div>
+
+            <div id="alerta-oms" class="alerta-oms"></div>
+        </div>
+    </div>
+
+    <script>
+        // Audios
+        const glupPlayer = new Tone.Player({ url: "data/glup_glup_sound.wav", autostart: false }).toDestination();
+        const sugarPlayer = new Tone.Player({ url: "data/sugar_sound.wav", autostart: false }).toDestination();
+
+        let datosOriginales = [];
+        let agrupadoPorBebida = {};
+        
+        let estadoActual = {
+            bebida: null,
+            tamano: null,
+            leche: null,
+            datosFinales: null
+        };
+
+        // Orden de tamaños
+        const jerarquiaTamanos = ["Solo", "Doppio", "Short", "Tall", "Grande", "Venti"];
+
+        // Variables D3
+        let svg, cupFill, cupClip, sugarScale, cupHeight = 400, cupWidthTop = 260, cupWidthBottom = 180;
+        let gTerrones;
+
+        fetch('data/data_starbucks_detallado.json')
+            .then(res => res.json())
+            .then(data => {
+                data.forEach(d => {
+                    let leche = d.tamano_preparacion_bebida.replace(d.tamano_vaso, '').trim();
+                    d.tipo_leche = leche !== "" ? leche : "Sin Leche";
+                    d['Sugars (g)'] = d['Sugars (g)'] !== undefined ? d['Sugars (g)'] : (d.azucar_pct * d.volumen_ml / 100);
+                });
+
+                datosOriginales = data.filter(d => d.Bebida && d.tamano_vaso);
+                agrupadoPorBebida = d3.group(datosOriginales, d => d.Bebida);
+                
+                inicializarD3();
+                renderizarBebidasVis(Array.from(agrupadoPorBebida.keys()).sort());
+            })
+            .catch(error => {
+                console.error("Error al cargar los datos:", error);
+            });
+
+        // ==========================================
+        // MOTOR DE ESTADO Y UI REACTIVA
+        // ==========================================
+
+        const searchBox = document.getElementById('search-box');
+        searchBox.addEventListener('input', (e) => {
+            const termino = e.target.value.toLowerCase();
+            const nombres = Array.from(agrupadoPorBebida.keys()).filter(n => n.toLowerCase().includes(termino)).sort();
+            renderizarBebidasVis(nombres);
+        });
+
+        function obtenerTamanoMasParecido(tamanosDisponibles, tamanoAnterior) {
+            if (!tamanoAnterior) return tamanosDisponibles[0];
+            
+            const idxAnt = jerarquiaTamanos.indexOf(tamanoAnterior);
+            if (idxAnt === -1) return tamanosDisponibles[0]; 
+
+            let mejorTamano = tamanosDisponibles[0];
+            let minDist = Infinity;
+            
+            tamanosDisponibles.forEach(tam => {
+                const idx = jerarquiaTamanos.indexOf(tam);
+                if (idx !== -1) {
+                    const dist = Math.abs(idx - idxAnt);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        mejorTamano = tam;
+                    }
+                }
+            });
+            return mejorTamano;
+        }
+
+        function procesarSeleccion(tipo, valor) {
+            if (tipo === 'bebida') estadoActual.bebida = valor;
+            else if (tipo === 'tamano') estadoActual.tamano = valor;
+            else if (tipo === 'leche') estadoActual.leche = valor;
+
+            if (!estadoActual.bebida) return;
+
+            const variantesBebida = agrupadoPorBebida.get(estadoActual.bebida);
+            const tamanosDisp = Array.from(new Set(variantesBebida.map(v => v.tamano_vaso)));
+            
+            if (tamanosDisp.length === 1) {
+                estadoActual.tamano = tamanosDisp[0];
+            } else if (!tamanosDisp.includes(estadoActual.tamano)) {
+                estadoActual.tamano = obtenerTamanoMasParecido(tamanosDisp, estadoActual.tamano);
+            }
+
+            const variantesTamano = variantesBebida.filter(v => v.tamano_vaso === estadoActual.tamano);
+            const lechesDisp = Array.from(new Set(variantesTamano.map(v => v.tipo_leche)));
+
+            if (lechesDisp.length === 1) {
+                estadoActual.leche = lechesDisp[0]; 
+            } else if (!lechesDisp.includes(estadoActual.leche)) {
+                estadoActual.leche = lechesDisp.includes("2% Milk") ? "2% Milk" : (lechesDisp.includes("Sin Leche") ? "Sin Leche" : lechesDisp[0]);
+            }
+
+            estadoActual.datosFinales = variantesTamano.find(v => v.tipo_leche === estadoActual.leche);
+
+            const termino = document.getElementById('search-box').value.toLowerCase();
+            const nombres = Array.from(agrupadoPorBebida.keys()).filter(n => n.toLowerCase().includes(termino)).sort();
+            
+            renderizarBebidasVis(nombres);
+            renderizarTamanosVis(tamanosDisp);
+            renderizarLechesVis(lechesDisp);
+
+            actualizarVasoD3();
+            if (estadoActual.datosFinales) reproducirSonidos(estadoActual.datosFinales);
+        }
+
+        // ==========================================
+        // FUNCIONES DE RENDERIZADO UI
+        // ==========================================
+
+        function renderizarBebidasVis(nombres) {
+            const contenedor = document.getElementById('lista-bebidas');
+            contenedor.innerHTML = '';
+            nombres.forEach(nombre => {
+                const btn = document.createElement('button');
+                btn.className = 'opcion-btn';
+                if (estadoActual.bebida === nombre) btn.classList.add('active');
+                btn.innerText = nombre;
+                btn.onclick = () => procesarSeleccion('bebida', nombre);
+                contenedor.appendChild(btn);
+            });
+        }
+
+        function renderizarTamanosVis(tamanosDisponibles) {
+            const contenedor = document.getElementById('lista-tamanos');
+            contenedor.innerHTML = '';
+            tamanosDisponibles.sort((a, b) => jerarquiaTamanos.indexOf(a) - jerarquiaTamanos.indexOf(b));
+
+            tamanosDisponibles.forEach(tam => {
+                const btn = document.createElement('button');
+                btn.className = 'opcion-btn';
+                if (estadoActual.tamano === tam) btn.classList.add('active');
+                btn.innerText = tam;
+                btn.onclick = () => procesarSeleccion('tamano', tam);
+                contenedor.appendChild(btn);
+            });
+        }
+
+        function renderizarLechesVis(lechesDisponibles) {
+            const contenedor = document.getElementById('lista-leches');
+            contenedor.innerHTML = '';
+            lechesDisponibles.forEach(leche => {
+                const btn = document.createElement('button');
+                btn.className = 'opcion-btn';
+                if (estadoActual.leche === leche) btn.classList.add('active');
+                btn.innerText = leche;
+                btn.onclick = () => procesarSeleccion('leche', leche);
+                contenedor.appendChild(btn);
+            });
+        }
+
+        // ==========================================
+        // D3 - CONSTRUCCIÓN Y ANIMACIÓN DEL VASO
+        // ==========================================
+        
+        function inicializarD3() {
+            const container = document.getElementById('viz-container');
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+
+            svg = d3.select("#viz-container").append("svg")
+                .attr("width", w).attr("height", h)
+                .style("position", "absolute")
+                .style("top", "0")
+                .style("left", "0");
+
+            const centerX = w / 2;
+            const centerY = h / 2 + 50;
+
+            // Escala de Y que mapea el azúcar a la altura
+            sugarScale = d3.scaleLinear().domain([0, 90]).range([cupHeight, 0]).clamp(true);
+
+            const xTopLeft = centerX - cupWidthTop / 2;
+            const xTopRight = centerX + cupWidthTop / 2;
+            const xBottomLeft = centerX - cupWidthBottom / 2;
+            const xBottomRight = centerX + cupWidthBottom / 2;
+            const yTop = centerY - cupHeight / 2;
+            const yBottom = centerY + cupHeight / 2;
+
+            const polygonPoints = `${xBottomLeft},${yBottom} ${xTopLeft},${yTop} ${xTopRight},${yTop} ${xBottomRight},${yBottom}`;
+
+            svg.append("defs").append("clipPath")
+                .attr("id", "cup-clip")
+                .append("polygon")
+                .attr("points", polygonPoints);
+
+            cupFill = svg.append("rect")
+                .attr("x", xTopLeft)
+                .attr("y", yBottom)
+                .attr("width", cupWidthTop)
+                .attr("height", 0)
+                .attr("fill", "#ffffff")
+                .attr("clip-path", "url(#cup-clip)");
+
+            // Contorno del vaso
+            svg.append("polygon")
+                .attr("points", polygonPoints)
+                .attr("fill", "none")
+                .attr("stroke", "rgba(255,255,255,0.8)")
+                .attr("stroke-width", 4)
+                .attr("stroke-linejoin", "round");
+                
+            // Reflejo de cristal
+            svg.append("polygon")
+                .attr("points", `${xTopLeft + 15},${yTop + 10} ${xTopLeft + 30},${yTop + 10} ${xBottomLeft + 30},${yBottom - 10} ${xBottomLeft + 15},${yBottom - 10}`)
+                .attr("fill", "rgba(255,255,255,0.1)");
+
+            // --- LÍNEAS OMS ---
+            
+            // 25g (Recomendado)
+            const y25 = yTop + sugarScale(25);
+            svg.append("line").attr("class", "oms-line-25")
+                .attr("x1", xTopLeft - 60).attr("x2", xTopRight + 60)
+                .attr("y1", y25).attr("y2", y25);
+                
+            svg.append("text").attr("class", "oms-label-25")
+                .attr("x", xTopRight + 65).attr("y", y25 + 4)
+                .text("RECOMENDADO OMS (25g)");
+
+            // 50g (Máximo)
+            const y50 = yTop + sugarScale(50);
+            svg.append("line").attr("class", "oms-line-50")
+                .attr("x1", xTopLeft - 60).attr("x2", xTopRight + 60)
+                .attr("y1", y50).attr("y2", y50);
+                
+            svg.append("text").attr("class", "oms-label-50")
+                .attr("x", xTopRight + 65).attr("y", y50 + 4)
+                .text("MÁXIMO OMS (50g)");
+
+            gTerrones = svg.append("g").attr("clip-path", "url(#cup-clip)");
+        }
+
+        async function reproducirSonidos(datos) {
+            if (Tone.context.state !== 'running') await Tone.start();
+            
+            const gramos = Number(datos['Sugars (g)']);
+            const volSugar = d3.scaleLinear().domain([0, 80]).range([-20, 2]).clamp(true)(gramos);
+
+            if (glupPlayer.loaded) {
+                glupPlayer.stop();
+                glupPlayer.volume.value = -5;
+                glupPlayer.start(Tone.now(), 0, 1.5);
+            }
+
+            if (sugarPlayer.loaded && gramos > 0) {
+                sugarPlayer.stop();
+                sugarPlayer.volume.value = volSugar;
+                sugarPlayer.start(Tone.now() + 0.3, 0, 2);
+            }
+        }
+
+        function actualizarVasoD3() {
+            if (!estadoActual.datosFinales) return;
+
+            const data = estadoActual.datosFinales;
+            const gramosAzucar = Number(data['Sugars (g)']) || 0;
+            const pctOms = (gramosAzucar / 50) * 100;
+            const cucharadas = (gramosAzucar / 4).toFixed(1);
+
+            const container = document.getElementById('viz-container');
+            const h = container.clientHeight;
+            const centerY = h / 2 + 50;
+            const yTop = centerY - cupHeight / 2;
+            const yBottom = centerY + cupHeight / 2;
+
+            const fillY = yTop + sugarScale(gramosAzucar);
+            const fillHeight = yBottom - fillY;
+
+            // Escala de color que va de blanco a rojo en función del azúcar (0 a 50g)
+            const colorLiquido = d3.scaleLinear().domain([0, 50]).range(["#ffffff", "#ff4757"]).clamp(true);
+            const targetColor = colorLiquido(gramosAzucar);
+
+            cupFill.transition().duration(1200).ease(d3.easeCubicOut)
+                .attr("y", fillY)
+                .attr("height", fillHeight)
+                .attr("fill", targetColor);
+
+            document.getElementById('metricas-panel').style.opacity = 1;
+            
+            const valAzucarNode = document.getElementById('valor-azucar');
+            d3.select(valAzucarNode).transition().duration(1200)
+                .tween("text", function() {
+                    const i = d3.interpolateRound(parseInt(this.textContent) || 0, Math.round(gramosAzucar));
+                    return function(t) { this.textContent = i(t) + "g"; };
+                })
+                .style("color", targetColor);
+
+            document.getElementById('equivalencia-cucharadas').innerText = `${cucharadas} cucharaditas 🥄`;
+            
+            const barraFill = document.getElementById('fill-impacto');
+            barraFill.style.width = Math.min(pctOms, 100) + "%";
+            barraFill.style.background = targetColor;
+            
+            document.getElementById('pct-impacto').innerText = `${Math.round(pctOms)}% del máximo diario`;
+            
+            // Lógica de la alerta escalonada
+            const alertaOms = document.getElementById('alerta-oms');
+            if (gramosAzucar > 50) {
+                alertaOms.style.display = 'block';
+                alertaOms.className = 'alerta-oms alerta-peligro';
+                alertaOms.innerText = '⚠️ HAS SUPERADO EL LÍMITE MÁXIMO DIARIO DE LA OMS (50g).';
+            } else if (gramosAzucar > 25) {
+                alertaOms.style.display = 'block';
+                alertaOms.className = 'alerta-oms alerta-precaucion';
+                alertaOms.innerText = '⚠️ Has superado el límite recomendado (25g).';
+            } else {
+                alertaOms.style.display = 'none';
+            }
+
+            animarTerrones(gramosAzucar, yBottom, fillY);
+        }
+
+        function animarTerrones(gramos, yBase, yLiquido) {
+            gTerrones.selectAll("*").remove();
+            if (gramos <= 5) return; 
+
+            // Max 20 terrones en pantalla para evitar saturación visual, calculados proporcionalmente
+            const numTerrones = Math.min(Math.round(gramos / 4), 20); 
+            const container = document.getElementById('viz-container');
+            const centerX = container.clientWidth / 2;
+
+            for (let i = 0; i < numTerrones; i++) {
+                const xRandom = centerX - 80 + Math.random() * 160;
+                const delay = Math.random() * 800; 
+
+                const terron = gTerrones.append("rect")
+                    .attr("class", "terron")
+                    .attr("x", xRandom)
+                    .attr("y", -50)
+                    .attr("width", 15).attr("height", 15);
+
+                terron.transition()
+                    .delay(delay)
+                    .duration(800)
+                    .ease(d3.easeBounceOut)
+                    .attr("y", yBase - 15 - (Math.random() * (yBase - yLiquido - 15)))
+                    .transition().duration(2000).style("opacity", 0.1).remove(); 
+            }
+        }
+    </script>
+</body>
+</html>
