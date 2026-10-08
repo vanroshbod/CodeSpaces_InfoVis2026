@@ -11,11 +11,59 @@
     <style>
         body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #141414; color: #e0e0e0; overflow: hidden; display: flex; height: 100vh; }
 
-        /* --- Panel de Controles --- */
+        /* --- Panel de Controles con Scrollbar Estilizada --- */
         #sidebar {
-            flex: 0 0 380px; background-color: #1a1a1a; padding: 30px;
-            box-shadow: 4px 0 15px rgba(0,0,0,0.5); overflow-y: auto; z-index: 10;
-            display: flex; flex-direction: column; box-sizing: border-box;
+            flex: 0 0 380px; 
+            background-color: #1a1a1a; 
+            padding: 30px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.5); 
+            height: 100vh;
+            max-height: 100vh;
+            overflow-y: auto; 
+            z-index: 10;
+            display: flex; 
+            flex-direction: column; 
+            box-sizing: border-box;
+            scrollbar-width: thin;
+            scrollbar-color: #555 #1a1a1a;
+        }
+
+        /* Estilo visual idéntico a la barra de desplazamiento indicada */
+        #sidebar::-webkit-scrollbar {
+            width: 10px;
+        }
+        #sidebar::-webkit-scrollbar-track {
+            background: #1a1a1a;
+            border-left: 1px solid #282828;
+        }
+        #sidebar::-webkit-scrollbar-thumb {
+            background-color: #555;
+            border-radius: 6px;
+            border: 2px solid #1a1a1a;
+        }
+        #sidebar::-webkit-scrollbar-thumb:hover {
+            background-color: #777;
+        }
+
+        /* Botón de retroceso al index principal */
+        .btn-volver { 
+            display: block; 
+            text-decoration: none; 
+            box-sizing: border-box;
+            margin-bottom: 20px; 
+            padding: 10px; 
+            background-color: #00d2ff; 
+            color: #000; 
+            font-weight: bold; 
+            text-align: center;
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            transition: background 0.2s, transform 0.1s;
+            font-size: 0.95em;
+        }
+        .btn-volver:hover { 
+            background-color: #00a8cc; 
         }
 
         #sidebar h2 { color: #fff; font-size: 1.4em; border-bottom: 2px solid #00d2ff; padding-bottom: 10px; margin-top: 0; }
@@ -30,7 +78,11 @@
 
         .lista-opciones {
             display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto; padding-right: 5px;
+            scrollbar-width: thin;
+            scrollbar-color: #444 #222;
         }
+        .lista-opciones::-webkit-scrollbar { width: 6px; }
+        .lista-opciones::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
 
         .opcion-btn {
             background-color: #222; border: 1px solid #333; color: #ccc; padding: 12px;
@@ -95,6 +147,9 @@
 <body>
 
     <div id="sidebar">
+        <!-- Botón para retroceder al archivo principal index -->
+        <a href="index.html" class="btn-volver">← Volver al Universo Principal</a>
+
         <h2>Diseña tu Bebida</h2>
         <div class="instrucciones">Elige qué vas a tomar y prepárate para simular el recorrido.</div>
 
@@ -117,14 +172,11 @@
     </div>
 
     <div id="viz-container">
-        
         <div id="viz-header">
             <h1 class="viz-title">¿Qué le hará esta bebida a <span>tu cuerpo?</span></h1>
             <p class="viz-subtitle">Observa tu futuro a 4 horas. El azúcar provoca un ascenso brusco y un colapso. La cafeína te mantiene estable, pero te cobrará factura cuando la adenosina vuelva a entrar de golpe. Presiona <b>Comenzar Recorrido</b>.</p>
         </div>
 
-        <!-- SVG D3 -->
-        
         <div id="ficha-resumen">
             <div class="stat-label">Azúcar Total</div>
             <div id="res-azucar" class="stat-val">0g</div>
@@ -156,7 +208,6 @@
 
         const jerarquiaTamanos = ["Solo", "Doppio", "Short", "Tall", "Grande", "Venti"];
 
-        // Variables D3
         let svg, width, height, margin;
         let xScale, yScale, pathTrack, carritoGrupo, carritoIcono;
         let zonaOptima, zonaCrash, baseline, xAxisGroup, yAxisGroup;
@@ -177,10 +228,6 @@
                 inicializarD3();
                 renderizarBebidasVis(Array.from(agrupadoPorBebida.keys()).sort());
             });
-
-        // ==========================================
-        // MOTOR DE ESTADO Y UI REACTIVA
-        // ==========================================
 
         const searchBox = document.getElementById('search-box');
         searchBox.addEventListener('input', (e) => {
@@ -287,10 +334,6 @@
             if (glupPlayer.loaded) { glupPlayer.stop(); glupPlayer.volume.value = -10; glupPlayer.start(Tone.now(), 0, 0.5); }
         }
 
-        // ==========================================
-        // D3 - MONTAÑA RUSA METABÓLICA
-        // ==========================================
-        
         function inicializarD3() {
             const container = document.getElementById('viz-container');
             width = container.clientWidth;
@@ -299,49 +342,40 @@
 
             svg = d3.select("#viz-container").append("svg").attr("width", width).attr("height", height);
 
-            // Escalas
             xScale = d3.scaleLinear().domain([0, 240]).range([margin.left, width - margin.right]);
             yScale = d3.scaleLinear().domain([-100, 100]).range([height - margin.bottom, margin.top]);
 
-            // Zonas de fondo
             zonaOptima = svg.append("rect").attr("class", "zona-optima")
                 .attr("x", margin.left).attr("width", width - margin.left - margin.right);
             zonaCrash = svg.append("rect").attr("class", "zona-crash")
                 .attr("x", margin.left).attr("width", width - margin.left - margin.right);
 
-            // Ejes
             xAxisGroup = svg.append("g").attr("class", "axis").attr("transform", `translate(0,${height - margin.bottom})`);
             yAxisGroup = svg.append("g").attr("class", "axis").attr("transform", `translate(${margin.left},0)`);
 
             svg.append("text").attr("x", width / 2).attr("y", height - 20).style("fill", "#888").style("text-anchor", "middle").text("Tiempo Transcurrido (Minutos)");
             svg.append("text").attr("transform", "rotate(-90)").attr("x", -height / 2).attr("y", 30).style("fill", "#888").style("text-anchor", "middle").text("Nivel de Alteración Energética");
 
-            // Línea Base (0)
             baseline = svg.append("line").attr("class", "baseline").attr("x1", margin.left).attr("x2", width - margin.right);
             svg.append("text").attr("class", "baseline-label").attr("x", margin.left + 10).text("Línea Base (Estado Normal)");
 
-            // Etiquetas dinámicas
             svg.append("text").attr("class", "peak-label").attr("text-anchor", "middle").text("⚡ Subidón");
             svg.append("text").attr("class", "crash-label").attr("text-anchor", "middle").text("😵 Colapso");
 
-            // Pista de Montaña Rusa
             pathTrack = svg.append("path")
                 .attr("fill", "none")
                 .attr("stroke", "#00d2ff")
                 .attr("stroke-width", 6)
                 .attr("stroke-linecap", "round");
 
-            // Línea guía del hover
             tooltipLine = svg.append("line")
                 .attr("stroke", "#00d2ff").attr("stroke-width", 1).attr("stroke-dasharray", "4,4")
                 .style("opacity", 0).attr("y1", margin.top).attr("y2", height - margin.bottom);
 
-            // Carrito Animado
             carritoGrupo = svg.append("g").style("opacity", 0);
             carritoGrupo.append("circle").attr("r", 14).attr("fill", "#1a1a2e").attr("stroke", "#00d2ff").attr("stroke-width", 3);
             carritoIcono = carritoGrupo.append("text").attr("text-anchor", "middle").attr("y", 5).style("font-size", "16px").text("🎢");
 
-            // Overlay para Tooltip
             svg.append("rect")
                 .attr("width", width - margin.left - margin.right).attr("height", height - margin.top - margin.bottom)
                 .attr("transform", `translate(${margin.left},${margin.top})`)
@@ -349,11 +383,9 @@
                 .on("mousemove", handleMouseMove)
                 .on("mouseout", () => { d3.select("#tooltip").style("opacity", 0); tooltipLine.style("opacity", 0); });
 
-            // Asignar evento al botón de inicio
             document.getElementById('btn-iniciar').addEventListener('click', animarCarritoYFrecuencia);
         }
 
-        // Nuevo modelo matemático integrando el rebote de la Adenosina
         function generarPuntosMontanaRusa(bebida) {
             const S = Number(bebida['Sugars (g)']) || 0;
             const C = Number(bebida.Caffeine_num) || 0;
@@ -363,10 +395,8 @@
 
             const puntos = [];
             for (let t = 0; t <= 240; t += 2) {
-                
                 let eCaffeine = 0;
                 if (C > 0) {
-                    // La cafeína hace efecto, pero la adenosina se acumula y golpea tarde (cerca del minuto 200)
                     const absorcion = (C * 0.8) * (Math.exp(-t / 180) - Math.exp(-t / 45));
                     const reboteAdenosina = (C * 0.5) * Math.exp(-Math.pow(t - 220, 2) / 3000); 
                     eCaffeine = absorcion - reboteAdenosina;
@@ -389,10 +419,8 @@
             const curva = generarPuntosMontanaRusa(data);
             svg.datum(curva);
 
-            // Resetea visualmente el carrito antes del próximo recorrido
             carritoGrupo.style("opacity", 0);
 
-            // Actualizar panel resumen
             document.getElementById('ficha-resumen').style.opacity = 1;
             document.getElementById('res-azucar').innerText = Number(data['Sugars (g)']).toFixed(1) + " g";
             document.getElementById('res-cafeina').innerText = Number(data.Caffeine_num).toFixed(1) + " mg";
@@ -403,7 +431,6 @@
             
             yScale.domain([-dominioAbs, dominioAbs]);
 
-            // Animar Ejes y Zonas
             xAxisGroup.transition().duration(800).call(d3.axisBottom(xScale).tickValues([0, 30, 60, 90, 120, 180, 240]));
             yAxisGroup.transition().duration(800).call(d3.axisLeft(yScale).tickFormat("")); 
 
@@ -416,11 +443,9 @@
 
             document.getElementById('alerta-crash').style.display = yMin < -15 ? 'block' : 'none';
 
-            // Dibujar la pista estática
             const generadorLinea = d3.line().x(d => xScale(d.minuto)).y(d => yScale(d.energia)).curve(d3.curveCatmullRom);
             pathTrack.transition().duration(800).attr("d", generadorLinea(curva));
 
-            // Posicionar etiquetas Peak y Crash
             const pMax = curva.reduce((prev, current) => (prev.energia > current.energia) ? prev : current);
             const pMin = curva.reduce((prev, current) => (prev.energia < current.energia) ? prev : current);
 
@@ -434,7 +459,6 @@
         async function animarCarritoYFrecuencia() {
             if (!estadoActual.datosFinales) return;
             
-            // Deshabilitar botón durante el viaje
             const btn = document.getElementById('btn-iniciar');
             btn.disabled = true;
 
@@ -448,7 +472,6 @@
             const yMin = yScale.domain()[0];
             carritoIcono.text(yMin < -30 ? "😵" : "🎢");
 
-            // Configurar Sintetizador (Sonificación)
             const synth = new Tone.Synth({
                 oscillator: { type: "sine" },
                 envelope: { attack: 0.1, decay: 0.2, sustain: 1, release: 0.5 }
@@ -456,27 +479,25 @@
             
             synth.triggerAttack("C4");
 
-            // Escala de frecuencia: Más alto en pantalla (Y pixel menor) = Más agudo
             const dominioAbs = Math.max(Math.abs(yScale.domain()[0]), Math.abs(yScale.domain()[1]));
             const freqScale = d3.scaleLinear()
-                .domain([yScale(-dominioAbs), yScale(dominioAbs)]) // de abajo a arriba en pantalla
-                .range([100, 800]) // de grave a agudo (Hz)
+                .domain([yScale(-dominioAbs), yScale(dominioAbs)])
+                .range([100, 800])
                 .clamp(true);
 
             carritoGrupo.transition()
-                .duration(4000) // 4 segundos de recorrido
+                .duration(4000)
                 .ease(d3.easeLinear) 
                 .attrTween("transform", function() {
                     return function(t) {
                         const p = pathNode.getPointAtLength(t * totalLength);
-                        // Ajustar el sonido en tiempo real según la altura del carrito
                         synth.frequency.value = freqScale(p.y);
                         return `translate(${p.x}, ${p.y})`;
                     }
                 })
                 .on("end", function() {
                     synth.triggerRelease();
-                    btn.disabled = false; // Rehabilitar botón
+                    btn.disabled = false;
                 });
         }
 

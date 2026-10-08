@@ -11,17 +11,59 @@
     <style>
         body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #141414; color: #e0e0e0; overflow: hidden; display: flex; height: 100vh; }
 
-        /* --- Panel de Controles (Sidebar) --- */
+        /* --- Panel de Controles (Sidebar) con Scrollbar Estilizada --- */
         #sidebar {
             flex: 0 0 380px; 
             background-color: #1a1a1a; 
             padding: 30px;
             box-shadow: 4px 0 15px rgba(0,0,0,0.5); 
+            height: 100vh;
+            max-height: 100vh;
             overflow-y: auto; 
             z-index: 10;
             display: flex; 
             flex-direction: column;
             box-sizing: border-box;
+            scrollbar-width: thin;
+            scrollbar-color: #555 #1a1a1a;
+        }
+
+        /* Estilo visual idéntico a la barra de desplazamiento indicada */
+        #sidebar::-webkit-scrollbar {
+            width: 10px;
+        }
+        #sidebar::-webkit-scrollbar-track {
+            background: #1a1a1a;
+            border-left: 1px solid #282828;
+        }
+        #sidebar::-webkit-scrollbar-thumb {
+            background-color: #555;
+            border-radius: 6px;
+            border: 2px solid #1a1a1a;
+        }
+        #sidebar::-webkit-scrollbar-thumb:hover {
+            background-color: #777;
+        }
+
+        /* Botón de retroceso al index principal */
+        .btn-volver { 
+            display: block; 
+            text-decoration: none; 
+            box-sizing: border-box;
+            margin-bottom: 20px; 
+            padding: 10px; 
+            background-color: #00d2ff; 
+            color: #000; 
+            font-weight: bold; 
+            text-align: center;
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            transition: background 0.2s, transform 0.1s;
+            font-size: 0.95em;
+        }
+        .btn-volver:hover { 
+            background-color: #00a8cc; 
         }
 
         #sidebar h2 { color: #fff; font-size: 1.4em; border-bottom: 2px solid #00d2ff; padding-bottom: 10px; margin-top: 0; }
@@ -38,7 +80,11 @@
         .lista-opciones {
             display: flex; flex-direction: column; gap: 8px; max-height: 250px; overflow-y: auto;
             padding-right: 5px;
+            scrollbar-width: thin;
+            scrollbar-color: #444 #222;
         }
+        .lista-opciones::-webkit-scrollbar { width: 6px; }
+        .lista-opciones::-webkit-scrollbar-thumb { background: #444; border-radius: 4px; }
 
         .opcion-btn {
             background-color: #222; border: 1px solid #333; color: #ccc; padding: 12px;
@@ -105,6 +151,9 @@
 <body>
 
     <div id="sidebar">
+        <!-- Botón para retroceder al archivo principal index -->
+        <a href="index.html" class="btn-volver">← Volver al Universo Principal</a>
+
         <h2>Arma tu Vaso</h2>
         <div class="instrucciones">Configura tu bebida paso a paso y descubre cuánta azúcar realmente estás consumiendo.</div>
 
@@ -124,15 +173,13 @@
     </div>
 
     <div id="viz-container">
-        
         <!-- Título Informativo -->
         <div id="viz-header">
             <h1 class="viz-title">¿Cuánta azúcar <span>esconde tu vaso?</span></h1>
             <p class="viz-subtitle">Observa cómo se llena tu bebida y descubre físicamente su impacto frente a los límites recomendados por la Organización Mundial de la Salud.</p>
         </div>
 
-        <!-- El SVG se inserta vía D3 aquí -->
-        
+        <!-- Panel de métricas flotante -->
         <div id="metricas-panel">
             <div class="metrica-label">Contenido de Azúcar</div>
             <div id="valor-azucar" class="metrica-valor" style="color: #fff;">0g</div>
@@ -163,10 +210,8 @@
             datosFinales: null
         };
 
-        // Orden de tamaños
         const jerarquiaTamanos = ["Solo", "Doppio", "Short", "Tall", "Grande", "Venti"];
 
-        // Variables D3
         let svg, cupFill, cupClip, sugarScale, cupHeight = 400, cupWidthTop = 260, cupWidthBottom = 180;
         let gTerrones;
 
@@ -188,10 +233,6 @@
             .catch(error => {
                 console.error("Error al cargar los datos:", error);
             });
-
-        // ==========================================
-        // MOTOR DE ESTADO Y UI REACTIVA
-        // ==========================================
 
         const searchBox = document.getElementById('search-box');
         searchBox.addEventListener('input', (e) => {
@@ -260,10 +301,6 @@
             if (estadoActual.datosFinales) reproducirSonidos(estadoActual.datosFinales);
         }
 
-        // ==========================================
-        // FUNCIONES DE RENDERIZADO UI
-        // ==========================================
-
         function renderizarBebidasVis(nombres) {
             const contenedor = document.getElementById('lista-bebidas');
             contenedor.innerHTML = '';
@@ -305,10 +342,6 @@
             });
         }
 
-        // ==========================================
-        // D3 - CONSTRUCCIÓN Y ANIMACIÓN DEL VASO
-        // ==========================================
-        
         function inicializarD3() {
             const container = document.getElementById('viz-container');
             const w = container.clientWidth;
@@ -323,7 +356,6 @@
             const centerX = w / 2;
             const centerY = h / 2 + 50;
 
-            // Escala de Y que mapea el azúcar a la altura
             sugarScale = d3.scaleLinear().domain([0, 90]).range([cupHeight, 0]).clamp(true);
 
             const xTopLeft = centerX - cupWidthTop / 2;
@@ -348,7 +380,6 @@
                 .attr("fill", "#ffffff")
                 .attr("clip-path", "url(#cup-clip)");
 
-            // Contorno del vaso
             svg.append("polygon")
                 .attr("points", polygonPoints)
                 .attr("fill", "none")
@@ -356,14 +387,10 @@
                 .attr("stroke-width", 4)
                 .attr("stroke-linejoin", "round");
                 
-            // Reflejo de cristal
             svg.append("polygon")
                 .attr("points", `${xTopLeft + 15},${yTop + 10} ${xTopLeft + 30},${yTop + 10} ${xBottomLeft + 30},${yBottom - 10} ${xBottomLeft + 15},${yBottom - 10}`)
                 .attr("fill", "rgba(255,255,255,0.1)");
 
-            // --- LÍNEAS OMS ---
-            
-            // 25g (Recomendado)
             const y25 = yTop + sugarScale(25);
             svg.append("line").attr("class", "oms-line-25")
                 .attr("x1", xTopLeft - 60).attr("x2", xTopRight + 60)
@@ -373,7 +400,6 @@
                 .attr("x", xTopRight + 65).attr("y", y25 + 4)
                 .text("RECOMENDADO OMS (25g)");
 
-            // 50g (Máximo)
             const y50 = yTop + sugarScale(50);
             svg.append("line").attr("class", "oms-line-50")
                 .attr("x1", xTopLeft - 60).attr("x2", xTopRight + 60)
@@ -422,7 +448,6 @@
             const fillY = yTop + sugarScale(gramosAzucar);
             const fillHeight = yBottom - fillY;
 
-            // Escala de color que va de blanco a rojo en función del azúcar (0 a 50g)
             const colorLiquido = d3.scaleLinear().domain([0, 50]).range(["#ffffff", "#ff4757"]).clamp(true);
             const targetColor = colorLiquido(gramosAzucar);
 
@@ -449,7 +474,6 @@
             
             document.getElementById('pct-impacto').innerText = `${Math.round(pctOms)}% del máximo diario`;
             
-            // Lógica de la alerta escalonada
             const alertaOms = document.getElementById('alerta-oms');
             if (gramosAzucar > 50) {
                 alertaOms.style.display = 'block';
@@ -470,7 +494,6 @@
             gTerrones.selectAll("*").remove();
             if (gramos <= 5) return; 
 
-            // Max 20 terrones en pantalla para evitar saturación visual, calculados proporcionalmente
             const numTerrones = Math.min(Math.round(gramos / 4), 20); 
             const container = document.getElementById('viz-container');
             const centerX = container.clientWidth / 2;

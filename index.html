@@ -19,7 +19,7 @@
             flex: 0 0 320px; 
             background-color: #1a1a1a; padding: 20px;
             box-shadow: 4px 0 15px rgba(0,0,0,0.5); overflow-y: auto; z-index: 10;
-            display: flex; /* Modificado: Siempre visible */
+            display: flex; /* Siempre visible */
             flex-direction: column;
         }
         
@@ -119,6 +119,33 @@
             border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
+
+        /* Contenedor de botones de navegación dentro del modal */
+        .modal-nav-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 25px;
+        }
+        .btn-modal-nav {
+            flex: 1;
+            padding: 12px;
+            background-color: #222;
+            color: #00d2ff;
+            border: 1px solid #00d2ff;
+            border-radius: 6px;
+            text-align: center;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 0.95em;
+            transition: all 0.2s;
+            box-sizing: border-box;
+            display: inline-block;
+        }
+        .btn-modal-nav:hover {
+            background-color: #00d2ff;
+            color: #000;
+        }
+
         #btn-modal-ok {
             display: block;
             width: 100%;
@@ -131,21 +158,12 @@
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            margin-top: 25px;
+            margin-top: 12px;
             transition: background-color 0.2s, transform 0.1s;
         }
         #btn-modal-ok:hover {
             background-color: #00a8cc;
         }
-
-        /* Cabecera del sidebar */
-        .sidebar-header {
-            display: flex; justify-content: flex-end; margin-bottom: 5px;
-        }
-        #btn-close-sidebar {
-            background: none; border: none; color: #aaa; font-size: 1.5em; cursor: pointer; transition: color 0.2s;
-        }
-        #btn-close-sidebar:hover { color: #fff; }
 
         /* --- Vistas del Sidebar --- */
         .sidebar-view { display: none; flex-direction: column; height: 100%; }
@@ -286,16 +304,19 @@
                 <li>Octavia Robledo</li>
             </ul>
 
-            <button id="btn-modal-ok"> Genial! </button>
+            <!-- BOTONES DE NAVEGACIÓN A IDEA 1 E IDEA 2 -->
+            <div class="modal-nav-group">
+                <a href="it1.html" class="btn-modal-nav">💡 Idea 1</a>
+                <a href="it2.html" class="btn-modal-nav">💡 Idea 2</a>
+            </div>
+
+            <!-- BOTÓN GENIAL! -->
+            <button id="btn-modal-ok">Genial!</button>
         </div>
     </div>
 
     <div id="dashboard">
         <div id="sidebar">
-            <div class="sidebar-header">
-                <button id="btn-close-sidebar" title="Cerrar menú">✕</button>
-            </div>
-            
             <div id="vista-leyenda" class="sidebar-view active">
                 <h2>Explorador</h2>
                 
@@ -333,7 +354,6 @@
         </div>
         
         <div id="viz-container">
-            <button id="btn-open-sidebar">☰ Menú</button>
             <button id="btn-info-modal" title="Información del Proyecto">i</button>
             <div id="tooltip" class="tooltip"></div>
         </div>
@@ -406,9 +426,7 @@
             fadeOut: 0.1
         }).toDestination();
 
-        // CONTROL DE SIDEBAR ACORDEÓN
         function toggleSidebar(open) {
-            // Eliminamos la lógica de display, el menú siempre está visible
             instantRedraw = true;
             const container = document.getElementById('viz-container');
             const svg = d3.select("#viz-container svg");
@@ -419,15 +437,6 @@
             }
             instantRedraw = false;
         }
-
-        document.getElementById('btn-open-sidebar').addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleSidebar(true);
-        });
-        document.getElementById('btn-close-sidebar').addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleSidebar(false);
-        });
 
         // ==========================================
         // COLOR MONOCROMÁTICO ROJO EN DEGRADÉ
@@ -559,7 +568,7 @@
                 svg.append("text").attr("class", "x-axis-label");
                 svg.append("text").attr("class", "y-axis-label");
                 svg.append("g").attr("class", "bubble-group");
-                svg.append("g").attr("class", "annotation-group"); // Grupo para flecha, ondas y texto de máxima concentración
+                svg.append("g").attr("class", "annotation-group");
 
                 dibujarVisualizacion(modoVista === 'todas' ? datosOriginales : datosPromedios);
             })
@@ -626,7 +635,6 @@
                 .attr("text-anchor", "middle")
                 .text(`Índices de azúcar en bebidas Starbucks respecto a ${nombresVariables[variableX]}`);
 
-            // NUEVO: Subtítulo de storytelling - Que los datos hablen
             svg.selectAll(".story-text").remove();
             
             let exceden = 0, totalVisible = 0;
@@ -727,7 +735,7 @@
 
             // LÍNEAS DE LA OMS 
             const whoGroup = svg.select(".who-group");
-            whoGroup.selectAll("*").remove(); // Limpiamos para evitar duplicados en el redibujado
+            whoGroup.selectAll("*").remove();
             
             if (metricaAzucar === 'gr') {
                 whoGroup.append("line").attr("class", "who-line line-25").attr("stroke", "#ffa502");
@@ -833,7 +841,6 @@
                         sugarPlayer.start(now, 0, duracionCompartida);
                     }
 
-                    // Foco visual conservando su tono rojo degradé
                     bebidaEnFoco = d.Bebida;
                     mostrarDetalle(d, getColor(d));
                     
@@ -850,24 +857,21 @@
             bubbleSelection.exit().transition().duration(tDurationExit).attr("r", 0).remove();
 
             // ========================================================
-            // ANOTACIÓN Y ONDAS DEL PEOR CASO (MÁXIMA COMBINACIÓN AZÚCAR + CALORÍAS)
+            // ANOTACIÓN Y ONDAS DEL PEOR CASO
             // ========================================================
             const annotationGroup = svg.select(".annotation-group");
-            annotationGroup.selectAll("*").remove(); // Limpiar elementos previos al redibujar
+            annotationGroup.selectAll("*").remove();
 
             if (data.length > 0 && !bebidaEnFoco) {
-                // 1. Valores máximos del dataset para normalizar equitativamente (0 a 1)
                 const maxCalDataset = d3.max(datosOriginales, d => Number(d['Calories (Cal)']) || 0) || 1;
                 const maxAzucarDataset = d3.max(datosOriginales, d => getAzucar(d) || 0) || 1;
 
-                // 2. Función de puntuación combinada (azúcar Y calorías)
                 const scorePeorCaso = item => {
                     const calNorm = (Number(item['Calories (Cal)']) || 0) / maxCalDataset;
                     const azucarNorm = (getAzucar(item) || 0) / maxAzucarDataset;
-                    return calNorm + azucarNorm; // Mayor puntuación combinada
+                    return calNorm + azucarNorm;
                 };
 
-                // 3. Encontrar la bebida con el peor caso combinado
                 const maxItem = data.reduce((prev, curr) => (scorePeorCaso(curr) > scorePeorCaso(prev)) ? curr : prev, data[0]);
 
                 if (maxItem) {
@@ -875,7 +879,6 @@
                     const targetY = yScale(getAzucar(maxItem) || 0);
                     const targetR = sizeScale(Number(maxItem.volumen_ml) || 473);
 
-                    // Ondas concéntricas animadas en torno a la burbuja
                     annotationGroup.append("circle")
                         .attr("cx", targetX)
                         .attr("cy", targetY)
@@ -886,11 +889,9 @@
                         .attr("cy", targetY)
                         .attr("class", "onda-animada onda-animada-2");
 
-                    // Coordenadas del texto y flecha
                     const textX = Math.max(margin.left + 10, targetX - 165);
                     const textY = Math.max(margin.top + 30, targetY - 60);
 
-                    // Textos explicativos y "viscerales"
                     const nombreCorto = maxItem.Bebida.length > 25 ? maxItem.Bebida.substring(0, 25) + "..." : maxItem.Bebida;
                     const cucharaditasMax = (getAzucar(maxItem) / 4).toFixed(1);
 
@@ -910,7 +911,6 @@
                         .style("font-size", "12px")
                         .style("opacity", "0.9");
 
-                    // Flecha que apunta hacia la burbuja
                     annotationGroup.append("line")
                         .attr("x1", textX + 65)
                         .attr("y1", textY + 28)
@@ -936,7 +936,6 @@
                     })
                     .attr("fill", d => getColor(d));
 
-                // Ocultar la anotación y ondas si hay una bebida en foco
                 annotationGroup.style("display", bebidaEnFoco ? "none" : "block");
             }
 
