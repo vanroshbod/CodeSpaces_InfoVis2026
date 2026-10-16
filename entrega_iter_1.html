@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universo Nutricional - InfoVis IIC2026</title>
+    
+    <!-- Librerías desde CDN -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+
+    <style>
+        body { margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #141414; color: #e0e0e0; overflow: hidden; }
+
+        /* --- Layout --- */
+        #dashboard { display: flex; width: 100vw; height: 100vh; position: relative; }
+        
+        #sidebar {
+            flex: 0 0 320px; 
+            background-color: #1a1a1a; padding: 20px;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.5); overflow-y: auto; z-index: 10;
+            display: flex;
+            flex-direction: column;
+            scrollbar-width: thin;
+            scrollbar-color: #555 #1a1a1a;
+        }
+
+        #sidebar::-webkit-scrollbar { width: 10px; }
+        #sidebar::-webkit-scrollbar-track { background: #1a1a1a; border-left: 1px solid #282828; }
+        #sidebar::-webkit-scrollbar-thumb { background-color: #555; border-radius: 6px; border: 2px solid #1a1a1a; }
+        #sidebar::-webkit-scrollbar-thumb:hover { background-color: #777; }
+        
+        #viz-container { flex: 1; position: relative; overflow: hidden; cursor: default; }
+
+        /* Botón de retroceso al index principal */
+        .btn-volver-index { 
+            display: block; 
+            text-decoration: none; 
+            box-sizing: border-box;
+            margin-bottom: 15px; 
+            padding: 10px; 
+            background-color: #00d2ff; 
+            color: #000; 
+            font-weight: bold; 
+            text-align: center;
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            transition: background 0.2s, transform 0.1s;
+            font-size: 0.95em;
+        }
+        .btn-volver-index:hover { background-color: #00a8cc; }
+
+        /* --- Vistas del Sidebar --- */
+        .sidebar-view { display: none; flex-direction: column; height: 100%; }
+        .sidebar-view.active { display: flex; }
+
+        #sidebar h2 { margin-top: 0; color: #fff; font-size: 1.3em; border-bottom: 1px solid #333; padding-bottom: 10px; }
+        .instrucciones { font-size: 0.85em; color: #888; margin-bottom: 15px; line-height: 1.4; }
+
+        /* Controles de Vista */
+        .control-group { margin-bottom: 15px; display: flex; gap: 5px; }
+        .btn-toggle { 
+            flex: 1; padding: 8px; background-color: #222; color: #888; border: 1px solid #444; 
+            border-radius: 4px; cursor: pointer; font-size: 0.8em; transition: all 0.2s;
+        }
+        .btn-toggle:hover { background-color: #333; color: #fff; }
+        .btn-toggle.active { background-color: #00d2ff; color: #000; font-weight: bold; border-color: #00d2ff; }
+
+        /* Detalles Nutricionales (Ficha) */
+        .ficha-header { background-color: #222; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #444; }
+        .ficha-titulo { color: #00d2ff; font-weight: bold; font-size: 1.1em; margin-bottom: 5px; }
+        .ficha-prep { color: #bbb; font-size: 0.9em; font-style: italic; margin-bottom: 5px;}
+        
+        .nutrition-table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
+        .nutrition-table th { text-align: left; padding: 8px; border-bottom: 1px solid #444; color: #aaa; }
+        .nutrition-table td { text-align: right; padding: 8px; border-bottom: 1px solid #333; font-weight: bold; }
+
+        /* --- Tooltip D3 --- */
+        .tooltip {
+            position: absolute; background: rgba(20, 20, 20, 0.95); border: 1px solid #444;
+            padding: 10px; border-radius: 8px; pointer-events: none; opacity: 0;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.7); z-index: 100; font-size: 0.85em; transition: opacity 0.2s;
+            max-width: 250px;
+        }
+        .tooltip .title { font-weight: bold; color: #00d2ff; font-size: 1.05em; margin-bottom: 4px; border-bottom: 1px solid #333; padding-bottom: 4px;}
+        .tooltip .detail { margin: 2px 0; }
+        .tooltip span { font-weight: bold; color: #fff; }
+        
+        /* --- Ejes y Títulos D3 --- */
+        svg text { font-family: sans-serif; }
+        .chart-title { fill: #ffffff; font-size: 16px; font-weight: bold; letter-spacing: 0.5px; }
+        .axis-label { fill: #ffffff !important; font-size: 12px; font-weight: bold; }
+        .x-axis path.domain, .y-axis path.domain,
+        .x-axis .tick line, .y-axis .tick line { 
+            stroke: #ffffff !important; 
+            stroke-opacity: 0.6 !important; 
+        }
+        .x-axis .tick text, .y-axis .tick text { 
+            fill: #ffffff !important; 
+            font-size: 11px !important;
+            font-weight: 500 !important;
+        }
+
+        .who-line { stroke-dasharray: 5,5; stroke-width: 1.5; }
+        .who-label { font-size: 11px; font-weight: bold; }
+
+        /* --- Animación de Ondas en el Peor Caso --- */
+        @keyframes onda-radar {
+            0% { r: 18px; opacity: 0.9; stroke-width: 2.5px; }
+            100% { r: 45px; opacity: 0; stroke-width: 0.5px; }
+        }
+        .onda-animada {
+            fill: none; stroke: #ff4757; transform-origin: center;
+            animation: onda-radar 2.2s infinite ease-out; pointer-events: none;
+        }
+        .onda-animada-2 { animation-delay: 1.1s; }
+        .annotation-group text, .annotation-group line { pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <div id="dashboard">
+        <div id="sidebar">
+            <a href="index.html" class="btn-volver-index">← Volver al Inicio</a>
+
+            <div id="vista-leyenda" class="sidebar-view active">
+                <h2>Explorador</h2>
+                
+                <div class="instrucciones" style="margin-bottom: 5px;">Densidad de datos:</div>
+                <div class="control-group">
+                    <button id="btn-vista-todas" class="btn-toggle">Todos los Vasos</button>
+                    <button id="btn-vista-promedios" class="btn-toggle active">Promedios</button>
+                </div>
+
+                <!-- SELECTOR DE EJE Y -->
+                <div class="instrucciones" style="margin-bottom: 5px; margin-top: 10px;">Métrica de Azúcar (Eje Y):</div>
+                <div class="control-group">
+                    <button id="btn-azucar-pct" class="btn-toggle">Concentración (%)</button>
+                    <button id="btn-azucar-gr" class="btn-toggle active">Gramos Totales</button>
+                </div>
+
+                <div class="instrucciones">
+                    <strong>Pasa el mouse</strong> o <strong>haz clic</strong> para filtrar. <br>👆 <strong>Clic en burbuja</strong> para escuchar el sonido.
+                </div>
+                <div id="legend-container"></div>
+                
+                <div class="size-legend" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #333;">
+                    <div style="font-size: 0.9em; color: #ccc; margin-bottom: 10px; font-weight: bold;">Tamaño de Vaso</div>
+                    <div id="size-legend-container"></div>
+                </div>
+            </div>
+
+            <div id="vista-detalle" class="sidebar-view">
+                <h2>Análisis Específico</h2>
+                <div id="detalle-contenido"></div>
+                <div class="instrucciones" style="margin-top: 15px; text-align: center; color: #00d2ff;">
+                    👆 Haz clic en cualquier lugar de la pantalla para volver al universo completo.
+                </div>
+            </div>
+        </div>
+        
+        <div id="viz-container">
+            <div id="tooltip" class="tooltip"></div>
+        </div>
+    </div>
+
+    <script>
+        // VARIABLES GLOBALES
+        let datosOriginales = [];
+        let datosPromedios = [];
+        let modoVista = 'promedios'; 
+        let metricaAzucar = 'gr'; 
+        let variableX = 'Calories (Cal)'; 
+        
+        let filtroCategoria = null; 
+        let filtroTamano = null;
+        let textoBusqueda = "";
+        let bebidaEnFoco = null; 
+        let instantRedraw = false;
+
+        const nombresVariables = {
+            'Calories (Cal)': 'Calorías',
+            'Caffeine_num': 'Cafeína (mg)',
+            'Protein (g)': 'Proteínas (g)',
+            'Total Fat (g)': 'Grasas Totales (g)'
+        };
+
+        const tamanosRef = [
+            { nombre: "Short", ml: 236 },
+            { nombre: "Tall", ml: 354 },
+            { nombre: "Grande", ml: 473 },
+            { nombre: "Venti", ml: 591 }
+        ];
+
+        // REPRODUCTORES DE AUDIO TONE.JS
+        const glupPlayer = new Tone.Player({ url: "data/glup_glup_sound.wav", autostart: false, fadeOut: 0.1 }).toDestination();
+        const sugarPlayer = new Tone.Player({ url: "data/sugar_sound.wav", autostart: false, fadeOut: 0.1 }).toDestination();
+
+        function getColor(d) {
+            const getAzucarVal = item => metricaAzucar === 'pct' ? Number(item.azucar_pct) || 0 : Number(item['Sugars (g)']) || 0;
+            const maxValX = d3.max(datosOriginales, item => Number(item['Calories (Cal)']) || 0) || 500;
+            const maxValY = d3.max(datosOriginales, item => getAzucarVal(item)) || 80;
+
+            const calNorm = Math.min(Math.max((Number(d['Calories (Cal)']) || 0) / maxValX, 0), 1);
+            const azucarNorm = Math.min(Math.max(getAzucarVal(d) / maxValY, 0), 1);
+
+            const intensidad = (calNorm + azucarNorm) / 2;
+            const intensidadCurva = Math.pow(intensidad, 0.75);
+
+            return d3.interpolateHsl("#ffffff", "#ff0022")(intensidadCurva);
+        }
+
+        function mostrarDetalle(datosBebida, colorFondo) {
+            document.getElementById('vista-leyenda').classList.remove('active');
+            document.getElementById('vista-detalle').classList.add('active');
+
+            const gramosAzucar = Number(datosBebida['Sugars (g)']);
+            const cucharaditas = (gramosAzucar / 4).toFixed(1);
+
+            const cont = document.getElementById('detalle-contenido');
+            cont.innerHTML = `
+                <div class="ficha-header" style="border-left-color: ${colorFondo}">
+                    <div class="ficha-titulo">${datosBebida.Bebida}</div>
+                    <div class="ficha-prep" style="color: ${colorFondo}; font-weight: bold;">Leche: ${datosBebida.tipo_leche}</div>
+                </div>
+                <table class="nutrition-table">
+                    <tbody>
+                        <tr><th>Tamaño Vaso</th><td><span style="color:#00d2ff">${datosBebida.tamano_vaso} (${datosBebida.volumen_ml} ml)</span></td></tr>
+                        <tr><th>Calorías</th><td>${datosBebida['Calories (Cal)']} Cal</td></tr>
+                        <tr><th>Proteínas</th><td>${datosBebida['Protein (g)']} g</td></tr>
+                        <tr><th>Grasas Totales</th><td>${datosBebida['Total Fat (g)']} g</td></tr>
+                        <tr><th>Cafeína</th><td>${datosBebida.Caffeine_num} mg</td></tr>
+                        <tr><td colspan="2" style="border:none; padding-top:15px;"></td></tr>
+                        <tr><th>Azúcar %</th><td><span style="color:#ff6b6b">${Number(datosBebida.azucar_pct).toFixed(2)}%</span></td></tr>
+                        <tr><th>Azúcar Total</th><td><span style="color:#ff6b6b">${gramosAzucar.toFixed(1)} g</span></td></tr>
+                        <tr><th>Azúcar Equivalente</th><td><span style="color:#fff">${cucharaditas} cucharaditas 🥄</span></td></tr>
+                    </tbody>
+                </table>
+            `;
+        }
+
+        function salirFoco() {
+            if (!bebidaEnFoco) return;
+            bebidaEnFoco = null;
+            document.getElementById('vista-detalle').classList.remove('active');
+            document.getElementById('vista-leyenda').classList.add('active');
+            document.dispatchEvent(new CustomEvent('actualizarViz'));
+        }
+
+        document.getElementById('sidebar').addEventListener('click', e => e.stopPropagation());
+        window.addEventListener('click', () => { if (bebidaEnFoco) salirFoco(); });
+
+        function generarPromedios(data) {
+            const agrupados = d3.group(data, d => d.Bebida + "|" + d.tipo_leche);
+            const promedios = [];
+            
+            agrupados.forEach((values) => {
+                const first = values[0];
+                promedios.push({
+                    Bebida: first.Bebida,
+                    Categoria_bebida: first.Categoria_bebida,
+                    tipo_leche: first.tipo_leche,
+                    tamano_vaso: "Promedio",
+                    tamano_preparacion_bebida: "Promedio (" + first.tipo_leche + ")",
+                    'Calories (Cal)': (d3.mean(values, d => Number(d['Calories (Cal)'])) || 0).toFixed(1),
+                    'Protein (g)': (d3.mean(values, d => Number(d['Protein (g)'])) || 0).toFixed(1),
+                    'Total Fat (g)': (d3.mean(values, d => Number(d['Total Fat (g)'])) || 0).toFixed(1),
+                    Caffeine_num: (d3.mean(values, d => Number(d.Caffeine_num)) || 0).toFixed(1),
+                    azucar_pct: (d3.mean(values, d => Number(d.azucar_pct)) || 0),
+                    'Sugars (g)': (d3.mean(values, d => Number(d['Sugars (g)'])) || 0), 
+                    volumen_ml: Math.round(d3.mean(values, d => Number(d.volumen_ml)) || 0)
+                });
+            });
+            return promedios;
+        }
+
+        fetch('data/data_starbucks_detallado.json')
+            .then(res => res.json())
+            .then(data => {
+                data.forEach(d => {
+                    let leche = d.tamano_preparacion_bebida.replace(d.tamano_vaso, '').trim();
+                    d.tipo_leche = leche !== "" ? leche : "Estándar / Sin Leche";
+                    d['Sugars (g)'] = d['Sugars (g)'] !== undefined ? d['Sugars (g)'] : (d.azucar_pct * d.volumen_ml / 100);
+                });
+
+                datosOriginales = data.filter(d => d.Bebida && d.Categoria_bebida);
+                datosPromedios = generarPromedios(datosOriginales);
+                
+                const container = document.getElementById('viz-container');
+                const svg = d3.select("#viz-container").append("svg")
+                    .attr("width", container.clientWidth).attr("height", container.clientHeight);
+                
+                const defs = svg.append("defs");
+                defs.append("marker")
+                    .attr("id", "arrowhead")
+                    .attr("viewBox", "0 -5 10 10")
+                    .attr("refX", 8).attr("refY", 0)
+                    .attr("markerWidth", 6).attr("markerHeight", 6)
+                    .attr("orient", "auto")
+                    .append("path")
+                    .attr("d", "M0,-5L10,0L0,5")
+                    .attr("fill", "#ff4757");
+
+                svg.append("text").attr("class", "chart-title");
+                svg.append("g").attr("class", "who-group").style("opacity", 0);
+                svg.append("g").attr("class", "x-axis");
+                svg.append("g").attr("class", "y-axis");
+                svg.append("text").attr("class", "x-axis-label");
+                svg.append("text").attr("class", "y-axis-label");
+                svg.append("g").attr("class", "bubble-group");
+                svg.append("g").attr("class", "annotation-group");
+
+                dibujarVisualizacion(modoVista === 'todas' ? datosOriginales : datosPromedios);
+            })
+            .catch(error => console.error("Error al cargar datos:", error));
+
+        function reDibujar() { dibujarVisualizacion(modoVista === 'todas' ? datosOriginales : datosPromedios); }
+
+        d3.select("#btn-vista-todas").on("click", function() {
+            modoVista = 'todas'; filtroTamano = null; 
+            d3.select("#btn-vista-todas").classed("active", true);
+            d3.select("#btn-vista-promedios").classed("active", false);
+            salirFoco(); reDibujar();
+        });
+        d3.select("#btn-vista-promedios").on("click", function() {
+            modoVista = 'promedios'; filtroTamano = null; 
+            d3.select("#btn-vista-todas").classed("active", false);
+            d3.select("#btn-vista-promedios").classed("active", true);
+            salirFoco(); reDibujar();
+        });
+        d3.select("#btn-azucar-pct").on("click", function() {
+            metricaAzucar = 'pct';
+            d3.select("#btn-azucar-pct").classed("active", true);
+            d3.select("#btn-azucar-gr").classed("active", false);
+            reDibujar();
+        });
+        d3.select("#btn-azucar-gr").on("click", function() {
+            metricaAzucar = 'gr';
+            d3.select("#btn-azucar-gr").classed("active", true);
+            d3.select("#btn-azucar-pct").classed("active", false);
+            reDibujar();
+        });
+
+        function dibujarVisualizacion(data) {
+            const container = document.getElementById('viz-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            const margin = { top: 60, right: 80, bottom: 60, left: 70 };
+
+            const svg = d3.select("#viz-container svg").attr("width", width).attr("height", height);
+            const tDuration = instantRedraw ? 0 : 800;
+            const tDurationShort = instantRedraw ? 0 : 500;
+            const tDurationExit = instantRedraw ? 0 : 300;
+
+            const getAzucar = d => metricaAzucar === 'pct' ? Number(d.azucar_pct) : Number(d['Sugars (g)']);
+            
+            function esVisible(d) {
+                const coincideTexto = d.Bebida.toLowerCase().includes(textoBusqueda);
+                const coincideCat = filtroCategoria ? d.Categoria_bebida === filtroCategoria : true;
+                const coincideTam = (filtroTamano && modoVista === 'todas') ? d.tamano_vaso === filtroTamano : true;
+                return coincideTexto && coincideCat && coincideTam;
+            }
+
+            svg.select(".chart-title")
+                .transition().duration(tDurationShort)
+                .attr("x", width / 2).attr("y", 30).attr("text-anchor", "middle")
+                .text(`Índices de azúcar en bebidas Starbucks respecto a ${nombresVariables[variableX]}`);
+
+            svg.selectAll(".story-text").remove();
+            let exceden = 0, totalVisible = 0;
+            data.forEach(d => {
+                if (esVisible(d)) {
+                    totalVisible++;
+                    if (getAzucar(d) > 50) exceden++;
+                }
+            });
+            const pctExceden = totalVisible > 0 ? Math.round((exceden / totalVisible) * 100) : 0;
+            const subtitleText = metricaAzucar === 'gr' 
+                ? (pctExceden > 0 ? `⚠️ El ${pctExceden}% de las bebidas mostradas (${exceden}) superan el límite máximo diario de azúcar (50g)` : `✅ Ninguna de las bebidas mostradas supera el límite máximo de la OMS`)
+                : `🔍 Mostrando porcentaje de concentración de azúcar por cada 100ml.`;
+
+            svg.append("text").attr("class", "story-text")
+                .attr("x", width / 2).attr("y", 50).attr("text-anchor", "middle")
+                .style("fill", "#00d2ff").style("font-size", "13px").style("font-style", "italic").style("opacity", 0)
+                .text(subtitleText).transition().duration(800).style("opacity", 1);
+
+            data.sort((a, b) => (b.volumen_ml || 0) - (a.volumen_ml || 0));
+
+            const maxValX = d3.max(datosOriginales, d => Number(d[variableX]) || 0);
+            const maxValY = d3.max(datosOriginales, d => getAzucar(d) || 0);
+            const maxAzucarPct = d3.max(datosOriginales, d => Number(d.azucar_pct) || 0);
+
+            const xScale = d3.scaleLinear().domain([-maxValX * 0.05, maxValX * 1.05]).range([margin.left, width - margin.right]);
+            const yScale = d3.scaleLinear().domain([-2, maxValY * 1.05]).range([height - margin.bottom, margin.top]);
+            const sizeScale = d3.scalePow().exponent(1.5).domain([30, 591]).range([8, 20]); 
+            
+            const duracionCompartida = 2.5;
+            const calVolumeScale = d3.scaleLinear().domain([5, maxValX || 110]).range([-10, 10]).clamp(true);
+            const sugarVolumeScale = d3.scaleLinear().domain([0, maxAzucarPct || 20]).range([-18, 2]).clamp(true);
+
+            const yAxisFormat = metricaAzucar === 'pct' ? "%" : "g";
+            const xAxis = d3.axisBottom(xScale).tickFormat(d => d);
+            const yAxis = d3.axisLeft(yScale).tickFormat(d => d + yAxisFormat);
+
+            const gX = svg.select(".x-axis");
+            gX.transition().duration(tDuration).attr("transform", `translate(0,${height - margin.bottom})`).call(xAxis);
+            gX.selectAll("text").style("fill", "#ffffff").style("font-size", "11px").style("font-weight", "500");
+            gX.selectAll("line, path").style("stroke", "#ffffff").style("stroke-opacity", "0.6");
+
+            const gY = svg.select(".y-axis");
+            gY.transition().duration(tDuration).attr("transform", `translate(${margin.left},0)`).call(yAxis);
+            gY.selectAll("text").style("fill", "#ffffff").style("font-size", "11px").style("font-weight", "500");
+            gY.selectAll("line, path").style("stroke", "#ffffff").style("stroke-opacity", "0.6");
+
+            svg.select(".x-axis-label").transition().duration(tDuration)
+                .attr("x", width / 2).attr("y", height - 20).style("text-anchor", "middle").style("fill", "#ffffff").text(nombresVariables[variableX]);
+            
+            const yAxisTitle = metricaAzucar === 'pct' ? "Concentración de Azúcar (g/100ml)" : "Azúcar Total (gramos)";
+            svg.select(".y-axis-label").transition().duration(tDuration)
+                .attr("transform", "rotate(-90)").attr("x", -height / 2).attr("y", 20).style("text-anchor", "middle").style("fill", "#ffffff").text(yAxisTitle);
+
+            // LÍNEAS DE LA OMS
+            const whoGroup = svg.select(".who-group");
+            whoGroup.selectAll("*").remove();
+            
+            if (metricaAzucar === 'gr') {
+                whoGroup.append("line").attr("class", "who-line line-25").attr("stroke", "#ffa502");
+                whoGroup.append("line").attr("class", "who-line line-50").attr("stroke", "#ff4757");
+                whoGroup.append("text").attr("class", "who-label text-25").attr("fill", "#ffa502").text("OMS Ideal (25g)");
+                whoGroup.append("text").attr("class", "who-label text-50").attr("fill", "#ff4757").text("OMS Límite (50g)");
+
+                whoGroup.transition().duration(tDuration).style("opacity", 1);
+                whoGroup.select(".line-25").transition().duration(tDuration)
+                    .attr("x1", margin.left).attr("x2", width - margin.right).attr("y1", yScale(25)).attr("y2", yScale(25));
+                whoGroup.select(".text-25").transition().duration(tDuration)
+                    .attr("x", width - margin.right - 10).attr("y", yScale(25) - 5).style("text-anchor", "end");
+                whoGroup.select(".line-50").transition().duration(tDuration)
+                    .attr("x1", margin.left).attr("x2", width - margin.right).attr("y1", yScale(50)).attr("y2", yScale(50));
+                whoGroup.select(".text-50").transition().duration(tDuration)
+                    .attr("x", width - margin.right - 10).attr("y", yScale(50) - 5).style("text-anchor", "end");
+            } else {
+                whoGroup.transition().duration(tDurationShort).style("opacity", 0);
+            }
+
+            const OPACIDAD_BASE = modoVista === 'todas' ? 0.5 : 0.8; 
+            const tooltip = d3.select("#tooltip");
+
+            // BURBUJAS
+            const bubbleSelection = svg.select(".bubble-group").selectAll(".bubble")
+                .data(data, d => d.Bebida + "|" + d.tamano_vaso + "|" + d.tipo_leche);
+
+            const bubblesEnter = bubbleSelection.enter().append("circle").attr("class", "bubble")
+                .attr("cx", d => xScale(Number(d[variableX]) || 0))
+                .attr("cy", d => yScale(getAzucar(d) || 0))
+                .attr("r", 0)
+                .attr("stroke", "#222").attr("stroke-width", 0.5)
+                .style("opacity", OPACIDAD_BASE);
+
+            bubblesEnter
+                .on("mouseover", function(event, d) {
+                    svg.selectAll(".bubble").style("opacity", b => {
+                        if (bebidaEnFoco) return b.Bebida === bebidaEnFoco ? (b === d ? 1 : 0.4) : 0.02;
+                        if (!esVisible(b)) return 0.02;
+                        if (filtroCategoria || (filtroTamano && modoVista === 'todas') || textoBusqueda !== "") return b === d ? 1 : 0.4;
+                        return b === d ? 1 : 0.15;
+                    });
+                    
+                    d3.select(this).style("opacity", 1).attr("stroke", "#fff").attr("stroke-width", 2)
+                        .attr("r", sizeScale(Number(d.volumen_ml) || 473) * 1.3); 
+
+                    let xPos = event.pageX + 15, yPos = event.pageY - 20;
+                    if(xPos + 250 > window.innerWidth) xPos = event.pageX - 265;
+
+                    const textoAzucar = metricaAzucar === 'pct' ? Number(d.azucar_pct).toFixed(2) + '%' : Number(d['Sugars (g)']).toFixed(1) + ' g';
+                    const cucharaditas = (Number(d['Sugars (g)']) / 4).toFixed(1);
+                    const valX = Number(d[variableX]).toFixed(1);
+
+                    tooltip.style("opacity", 1).html(`
+                        <div class="title">${d.Bebida}</div>
+                        <div class="detail">Tamaño: <span style="color:#00d2ff">${d.tamano_vaso} (${d.volumen_ml}ml)</span></div>
+                        <div class="detail">Leche: <span style="color:#fff">${d.tipo_leche}</span></div>
+                        <div class="detail">Azúcar: <span style="color:#ff6b6b">${textoAzucar}</span> (${cucharaditas} 🥄)</div>
+                        <div class="detail">${nombresVariables[variableX]}: <span style="color:#feca57">${valX}</span></div>
+                        <div class="tooltip-hint" style="margin-top: 8px;">👆 Haz clic para aislar y escuchar el sonido</div>
+                    `).style("left", xPos + "px").style("top", yPos + "px");
+                })
+                .on("mouseout", function(event, d) {
+                    d3.select(this).attr("stroke", "#222").attr("stroke-width", 0.5).attr("r", sizeScale(Number(d.volumen_ml) || 473));
+                    svg.selectAll(".bubble").style("opacity", b => {
+                        if (bebidaEnFoco) return b.Bebida === bebidaEnFoco ? 1 : 0.02;
+                        if (!esVisible(b)) return 0.02; 
+                        if (filtroCategoria || (filtroTamano && modoVista === 'todas') || textoBusqueda !== "") return 1; 
+                        return OPACIDAD_BASE; 
+                    });
+                    tooltip.style("opacity", 0);
+                })
+                .on("click", async function(event, d) {
+                    event.stopPropagation();
+                    if (Tone.context.state !== 'running') await Tone.start();
+
+                    const now = Tone.now();
+                    const valX = Number(d[variableX]) || 0;
+                    const azucar = Number(d.azucar_pct) || 0;
+
+                    const volGlup = calVolumeScale(valX);
+                    const volAzucar = sugarVolumeScale(azucar);
+
+                    if (glupPlayer.loaded) {
+                        glupPlayer.stop();
+                        glupPlayer.volume.value = volGlup;
+                        glupPlayer.playbackRate = 1.0;
+                        glupPlayer.start(now, 0, duracionCompartida);
+                    }
+
+                    if (sugarPlayer.loaded) {
+                        sugarPlayer.stop();
+                        sugarPlayer.volume.value = volAzucar;
+                        sugarPlayer.start(now, 0, duracionCompartida);
+                    }
+
+                    bebidaEnFoco = d.Bebida;
+                    mostrarDetalle(d, getColor(d));
+                });
+
+            const bubbles = bubblesEnter.merge(bubbleSelection);
+            bubbles.transition().duration(tDuration)
+                .attr("cx", d => xScale(Number(d[variableX]) || 0))
+                .attr("cy", d => yScale(getAzucar(d) || 0))
+                .attr("r", d => sizeScale(Number(d.volumen_ml) || 473))
+                .attr("fill", d => getColor(d));
+
+            bubbleSelection.exit().transition().duration(tDurationExit).attr("r", 0).remove();
+
+            // ANOTACIÓN PEOR CASO (MÁXIMA COMBINACIÓN AZÚCAR + CALORÍAS)
+            const annotationGroup = svg.select(".annotation-group");
+            annotationGroup.selectAll("*").remove();
+
+            if (data.length > 0 && !bebidaEnFoco) {
+                const maxCalDataset = d3.max(datosOriginales, d => Number(d['Calories (Cal)']) || 0) || 1;
+                const maxAzucarDataset = d3.max(datosOriginales, d => getAzucar(d) || 0) || 1;
+
+                const scorePeorCaso = item => {
+                    const calNorm = (Number(item['Calories (Cal)']) || 0) / maxCalDataset;
+                    const azucarNorm = (getAzucar(item) || 0) / maxAzucarDataset;
+                    return calNorm + azucarNorm;
+                };
+
+                const maxItem = data.reduce((prev, curr) => (scorePeorCaso(curr) > scorePeorCaso(prev)) ? curr : prev, data[0]);
+
+                if (maxItem) {
+                    const targetX = xScale(Number(maxItem[variableX]) || 0);
+                    const targetY = yScale(getAzucar(maxItem) || 0);
+                    const targetR = sizeScale(Number(maxItem.volumen_ml) || 473);
+
+                    annotationGroup.append("circle").attr("cx", targetX).attr("cy", targetY).attr("class", "onda-animada");
+                    annotationGroup.append("circle").attr("cx", targetX).attr("cy", targetY).attr("class", "onda-animada onda-animada-2");
+
+                    const textX = Math.max(margin.left + 10, targetX - 165);
+                    const textY = Math.max(margin.top + 30, targetY - 60);
+
+                    const nombreCorto = maxItem.Bebida.length > 25 ? maxItem.Bebida.substring(0, 25) + "..." : maxItem.Bebida;
+                    const cucharaditasMax = (getAzucar(maxItem) / 4).toFixed(1);
+
+                    annotationGroup.append("text").attr("x", textX).attr("y", textY)
+                        .text(`¡${nombreCorto}!`).attr("fill", "#ff4757").style("font-weight", "bold").style("font-size", "14px");
+
+                    annotationGroup.append("text").attr("x", textX).attr("y", textY + 18)
+                        .text(`Bomba de azúcar: ${cucharaditasMax} cucharaditas 🥄`).attr("fill", "#ffffff").style("font-size", "12px").style("opacity", "0.9");
+
+                    annotationGroup.append("line")
+                        .attr("x1", textX + 65).attr("y1", textY + 28)
+                        .attr("x2", targetX - targetR * 0.4).attr("y2", targetY - targetR * 0.4)
+                        .attr("stroke", "#ff4757").attr("stroke-width", 2).attr("marker-end", "url(#arrowhead)");
+                }
+            }
+
+            function actualizarVistaFiltros() {
+                svg.selectAll(".bubble").transition().duration(instantRedraw ? 0 : 400)
+                    .style("opacity", d => {
+                        if (bebidaEnFoco) return d.Bebida === bebidaEnFoco ? 1 : 0.02; 
+                        if (!esVisible(d)) return 0.02; 
+                        if (filtroCategoria || (filtroTamano && modoVista === 'todas') || textoBusqueda !== "") return 1; 
+                        return OPACIDAD_BASE; 
+                    })
+                    .style("pointer-events", d => {
+                        if (bebidaEnFoco) return d.Bebida === bebidaEnFoco ? "all" : "none";
+                        return esVisible(d) ? "all" : "none";
+                    })
+                    .attr("fill", d => getColor(d));
+
+                annotationGroup.style("display", bebidaEnFoco ? "none" : "block");
+            }
+
+            document.addEventListener('actualizarViz', actualizarVistaFiltros);
+
+            const legendContainer = d3.select("#legend-container");
+            legendContainer.html(`
+                <div style="font-size: 0.85em; margin-bottom: 8px; color: #ccc;">
+                    <strong>Intensidad Nutricional</strong> (Calorías + Azúcar)
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.75em; color: #aaa;">Bajo</span>
+                    <div style="flex: 1; height: 10px; border-radius: 4px; border: 1px solid #444; background: linear-gradient(to right, #ffffff, #ff0022);"></div>
+                    <span style="font-size: 0.75em; color: #ff0022; font-weight: bold;">Alto</span>
+                </div>
+            `);
+
+            const sizeLegendContainer = d3.select("#size-legend-container");
+            sizeLegendContainer.html(""); 
+            const maxDiametro = sizeScale(591) * 2; 
+            
+            tamanosRef.forEach(t => {
+                const diametro = sizeScale(t.ml) * 2;
+                const item = sizeLegendContainer.append("div").attr("class", modoVista === 'promedios' ? "size-item disabled" : "size-item");
+
+                if(modoVista === 'todas') {
+                    item.on("mouseover", function() {
+                            if (!filtroTamano && !bebidaEnFoco) {
+                                svg.selectAll(".bubble").style("opacity", d => (d.tamano_vaso === t.nombre && (filtroCategoria ? d.Categoria_bebida === filtroCategoria : true) && d.Bebida.toLowerCase().includes(textoBusqueda)) ? 1 : 0.02);
+                            }
+                        })
+                        .on("mouseout", function() { if(!filtroTamano && !bebidaEnFoco) actualizarVistaFiltros(); })
+                        .on("click", function(event) {
+                            event.stopPropagation();
+                            if(bebidaEnFoco) return;
+                            if (filtroTamano === t.nombre) {
+                                filtroTamano = null;
+                                d3.selectAll(".size-item").style("background-color", "transparent");
+                            } else {
+                                filtroTamano = t.nombre;
+                                d3.selectAll(".size-item").style("background-color", "transparent");
+                                d3.select(this).style("background-color", "#333");
+                            }
+                            actualizarVistaFiltros();
+                        });
+                }
+                item.append("div").attr("class", "size-circle").style("width", diametro+"px").style("height", diametro+"px").style("margin-left", (maxDiametro - diametro)/2 + "px").style("margin-right", "15px");
+                item.append("div").attr("class", "size-text").text(`${t.nombre} (${t.ml} ml)`);
+            });
+
+            if (modoVista === 'promedios') {
+                sizeLegendContainer.append("div").style("font-size", "0.75em").style("color", "#ff6b6b").style("margin-top", "10px").style("text-align", "center")
+                .text("El filtro por tamaño está desactivado en la vista de Promedios.");
+            }
+
+            d3.select(window).on("resize", () => {
+                const nw = container.clientWidth, nh = container.clientHeight;
+                svg.attr("width", nw).attr("height", nh);
+                dibujarVisualizacion(data);
+            });
+        }
+    </script>
+</body>
+</html>
