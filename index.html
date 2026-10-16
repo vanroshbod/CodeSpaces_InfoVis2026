@@ -477,7 +477,7 @@
     </div>
 
     <div id="viz-container">
-        <!-- Banner de advertencia del peor caso ubicado abajo del vaso (ROJO CONSERVADO) -->
+        <!-- Banner de advertencia del peor caso ubicado abajo del vaso -->
         <div id="banner-peor-caso"></div>
 
         <!-- Botón flotante (i) -->
@@ -544,13 +544,46 @@
         modalCard.addEventListener('click', (e) => e.stopPropagation());
         modalOverlay.addEventListener('click', () => modalOverlay.style.display = 'none');
 
-        // AUDIOS: Azúcar (Terrones) y Energía (Reloj de Calorías)
-        const sugarPlayer = new Tone.Player({ url: "data/sugar_sound.wav", autostart: false }).toDestination();
-        const energyPlayer = new Tone.Player({ url: "data/energy_sound.wav", autostart: false }).toDestination();
+        // ========================================================
+        // PROCESAMIENTO Y FILTRADO DE FRECUENCIAS (TONE.JS)
+        // ========================================================
+
+        // 1. Canal de Azúcar: Agudos puros (> 3 kHz)
+        const sugarHighpass = new Tone.Filter({
+            frequency: 3000,
+            type: "highpass",
+            rolloff: -12
+        }).toDestination();
+
+        const sugarPlayer = new Tone.Player({
+            url: "data/sugar_sound.wav",
+            autostart: false
+        }).connect(sugarHighpass);
+
+        // 2. Canal de Calorías: Banda de Medios y Graves (200 Hz a 1.5 kHz)
+        const energyHighpass = new Tone.Filter({
+            frequency: 200,
+            type: "highpass",
+            rolloff: -12
+        });
+
+        const energyLowpass = new Tone.Filter({
+            frequency: 1500,
+            type: "lowpass",
+            rolloff: -12
+        }).toDestination();
+
+        energyHighpass.connect(energyLowpass);
+
+        const energyPlayer = new Tone.Player({
+            url: "data/energy_sound.wav",
+            autostart: false
+        }).connect(energyHighpass);
 
         let datosOriginales = [];
         let agrupadoPorBebida = {};
         let peorCasoGlobal = null;
+        let sonidoInicialReproducido = false;
         
         let estadoActual = {
             bebida: null,
@@ -583,37 +616,72 @@
             return (-b + Math.sqrt(b * b + 4 * k * areaObjetivo)) / (2 * k);
         }
 
-        fetch('data/data_starbucks_detallado.json')
-            .then(res => res.json())
-            .then(data => {
-                data.forEach(d => {
-                    let leche = d.tamano_preparacion_bebida.replace(d.tamano_vaso, '').trim();
-                    d.tipo_leche = leche !== "" ? leche : "Sin Leche";
-                    d['Sugars (g)'] = d['Sugars (g)'] !== undefined ? d['Sugars (g)'] : (d.azucar_pct * d.volumen_ml / 100);
-                });
-
-                datosOriginales = data.filter(d => d.Bebida && d.tamano_vaso);
-                agrupadoPorBebida = d3.group(datosOriginales, d => d.Bebida);
-                
-                inicializarD3();
-                inicializarRelojEnergetico();
-                renderizarBebidasVis(Array.from(agrupadoPorBebida.keys()).sort());
-                renderizarOverview();
-
-                peorCasoGlobal = datosOriginales.reduce((prev, curr) => {
-                    return (Number(curr['Sugars (g)']) || 0) > (Number(prev['Sugars (g)']) || 0) ? curr : prev;
-                }, datosOriginales[0]);
-
-                if (peorCasoGlobal) {
-                    estadoActual.bebida = peorCasoGlobal.Bebida;
-                    estadoActual.tamano = peorCasoGlobal.tamano_vaso;
-                    estadoActual.leche = peorCasoGlobal.tipo_leche;
-                    procesarSeleccion('bebida', peorCasoGlobal.Bebida);
-                }
-            })
-            .catch(error => {
-                console.error("Error al cargar los datos:", error);
+        // Carga simultánea: Datos JSON + Buffers de Audio de Tone.js
+        Promise.all([
+            fetch('data/data_starbucks_detallado.json').then(res => res.json()),
+            Tone.loaded()
+        ])
+        .then(([data]) => {
+            data.forEach(d => {
+                let leche = d.tamano_preparacion_bebida.replace(d.tamano_vaso, '').trim();
+                d.tipo_leche = leche !== "" ? leche : "Sin Leche";
+                d['Sugars (g)'] = d['Sugars (g)'] !== undefined ? d['Sugars (g)'] : (d.azucar_pct * d.volumen_ml / 100);
             });
+
+            datosOriginales = data.filter(d => d.Bebida && d.tamano_vaso);
+            agrupadoPorBebida = d3.group(datosOriginales, d => d.Bebida);
+            
+            inicializarD3();
+            inicializarRelojEnergetico();
+            renderizarBebidasVis(Array.from(agrupadoPorBebida.keys()).sort());
+            renderizarOverview();
+
+            peorCasoGlobal = datosOriginales.reduce((prev, curr) => {
+                return (Number(curr['Sugars (g)']) || 0) > (Number(prev['Sugars (g)']) || 0) ? curr : prev;
+            }, datosOriginales[0]);
+
+            if (peorCasoGlobal) {
+                estadoActual.bebida = peorCasoGlobal.Bebida;
+                estadoActual.tamano = peorCasoGlobal.tamano_vaso;
+                estadoActual.leche = peorCasoGlobal.tipo_leche;
+                procesarSeleccion('bebida', peorCasoGlobal.Bebida);
+            }
+
+            // Intento de disparo sonoro inicial
+            intentarReproducirSonidoInicial();
+        })
+        .catch(error => {
+            console.error("Error al cargar datos o sonidos:", error);
+        });
+
+        // Intentar reproducir sonido al cargar
+        async function intentarReproducirSonidoInicial() {
+            if (sonidoInicialReproducido || !estadoActual.datosFinales) return;
+            try {
+                if (Tone.context.state !== 'running') {
+                    await Tone.start();
+                }
+                reproducirSonidos(estadoActual.datosFinales);
+                sonidoInicialReproducido = true;
+            } catch (e) {
+                // Autoplay bloqueado por el navegador; queda en espera para el primer gesto
+            }
+        }
+
+        // Desbloqueo por primera interacción del usuario si el navegador restringió el autoplay
+        const desbloquearAudioInicial = async () => {
+            if (Tone.context.state !== 'running') {
+                await Tone.start();
+            }
+            if (!sonidoInicialReproducido && estadoActual.datosFinales) {
+                reproducirSonidos(estadoActual.datosFinales);
+                sonidoInicialReproducido = true;
+            }
+            window.removeEventListener('pointerdown', desbloquearAudioInicial);
+            window.removeEventListener('keydown', desbloquearAudioInicial);
+        };
+        window.addEventListener('pointerdown', desbloquearAudioInicial);
+        window.addEventListener('keydown', desbloquearAudioInicial);
 
         const searchBox = document.getElementById('search-box');
         searchBox.addEventListener('input', (e) => {
@@ -691,8 +759,9 @@
             renderizarOverview();
             actualizarRelojEnergetico();
 
-            if (estadoActual.datosFinales) {
+            if (estadoActual.datosFinales && Tone.context.state === 'running') {
                 reproducirSonidos(estadoActual.datosFinales);
+                sonidoInicialReproducido = true;
             }
         }
 
@@ -882,7 +951,6 @@
             const g = svgReloj.append("g")
                 .attr("transform", `translate(${w / 2}, ${h - 12})`);
 
-            // Generador del arco completo de 180 grados
             const arcGen = d3.arc()
                 .innerRadius(rInterior)
                 .outerRadius(rExterior)
@@ -890,20 +958,17 @@
                 .endAngle(Math.PI / 2)
                 .cornerRadius(4);
 
-            // Arco continuo coloreado con el degradé
             g.append("path")
                 .attr("d", arcGen())
                 .attr("fill", "url(#gradiente-reloj-daltonico)")
                 .attr("stroke", "#222")
                 .attr("stroke-width", 1);
 
-            // Marcas en los extremos
             g.append("text").attr("x", -rExterior - 3).attr("y", -1)
                 .attr("fill", "#888").attr("font-size", 8.5).attr("text-anchor", "end").text("0");
             g.append("text").attr("x", rExterior + 3).attr("y", -1)
                 .attr("fill", "#888").attr("font-size", 8.5).attr("text-anchor", "start").text("500+");
 
-            // Grupo de la aguja con pivote central
             agujaReloj = g.append("g").attr("class", "aguja-grupo");
 
             agujaReloj.append("polygon")
@@ -943,7 +1008,6 @@
             document.getElementById('reloj-pct-diario').innerText = `${pctDiario}% de tu dieta diaria (2.000 kcal)`;
             document.getElementById('reloj-actividad').innerText = `🏃 Requiere ~${minutosTrote} min de trote para quemarse`;
 
-            // Escala de rotación (-90° a +90°)
             const escalaAngulo = d3.scaleLinear()
                 .domain([0, 500])
                 .range([-90, 90])
@@ -1048,18 +1112,17 @@
             actualizarRelojEnergetico();
         });
 
-        // REPRODUCCIÓN SONORA: Energía (Calorías moduladas) + Azúcar (Terrones)
+        // REPRODUCCIÓN SONORA: Energía (Filtro 200Hz - 1.5kHz) + Azúcar (Filtro > 3kHz)
         async function reproducirSonidos(datos) {
             if (Tone.context.state !== 'running') await Tone.start();
             
             const gramosAzucar = Number(datos['Sugars (g)']) || 0;
             const calorias = Number(datos['Calories (Cal)']) || 0;
 
-            // 1. Sonido de Energía / Calorías (Reloj Energético)
+            // 1. Sonido de Energía / Calorías (Banda media-grave)
             if (energyPlayer.loaded) {
                 energyPlayer.stop();
 
-                // A más calorías, tono más agudo y enérgico
                 const escalaPitch = d3.scaleLinear()
                     .domain([0, 500])
                     .range([0.75, 1.45])
@@ -1067,7 +1130,7 @@
 
                 const escalaVolumen = d3.scaleLinear()
                     .domain([0, 500])
-                    .range([-18, -8])
+                    .range([-26, -10])
                     .clamp(true);
 
                 energyPlayer.playbackRate = escalaPitch(calorias);
@@ -1075,12 +1138,15 @@
                 energyPlayer.start(Tone.now(), 0, 1.2);
             }
 
-            // 2. Sonido de Azúcar (Terrones)
+            // 2. Sonido de Azúcar (Agudos puros > 3 kHz) desfasado 250 ms
             if (sugarPlayer.loaded && gramosAzucar > 0) {
-                const volSugar = d3.scaleLinear().domain([0, 80]).range([-20, 2]).clamp(true)(gramosAzucar);
+                const volSugar = d3.scaleLinear()
+                    .domain([0, 80])
+                    .range([-18, 0])
+                    .clamp(true)(gramosAzucar);
+
                 sugarPlayer.stop();
                 sugarPlayer.volume.value = volSugar;
-                // Pequeño desfase de 250ms para no pisar el ataque del medidor
                 sugarPlayer.start(Tone.now() + 0.25, 0, 2);
             }
         }
