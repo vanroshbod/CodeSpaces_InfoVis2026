@@ -197,11 +197,11 @@
         .alerta-precaucion { background: rgba(255, 165, 2, 0.1); border-left: 4px solid #ffa502; color: #ffa502; }
         .alerta-peligro { background: rgba(255, 71, 87, 0.15); border-left: 4px solid #ff4757; color: #ff4757; }
 
-        /* Mini Gráfico Overview ubicado a la IZQUIERDA del vaso */
+        /* Mini Gráfico Overview ubicado a la IZQUIERDA del vaso (más arriba) */
         #overview-panel {
             position: absolute;
             left: 35px;
-            top: 175px; /* Se eleva justo bajo la cabecera descriptiva */
+            top: 175px;
             width: 275px;
             max-height: 42vh;
             overflow: hidden;
@@ -355,7 +355,7 @@
             #overview-panel {
                 width: 230px;
                 left: 20px;
-                bottom: 80px;
+                top: 170px;
             }
         }
     </style>
@@ -486,9 +486,31 @@
 
         const jerarquiaTamanos = ["Solo", "Doppio", "Short", "Tall", "Grande", "Venti"];
 
-        let svg, cupFill, cupClip, sugarScale;
+        let svg, cupFill, cupClip;
         let cupHeight = 340, cupWidthTop = 210, cupWidthBottom = 150;
         let gTerrones;
+
+        // ========================================================
+        // CÁLCULO DE ÁREA PROPORCIONAL EXACTA (LIE FACTOR = 1)
+        // ========================================================
+        function alturaParaAzucar(gramos) {
+            const H = cupHeight;           // 340
+            const b = cupWidthBottom;      // 150
+            const B = cupWidthTop;         // 210
+            const maxAzucar = 90;          // Escala máxima en gramos
+
+            const g = Math.max(0, Math.min(Number(gramos) || 0, maxAzucar));
+            const areaTotal = ((B + b) / 2) * H;
+            const areaObjetivo = areaTotal * (g / maxAzucar);
+            const k = (B - b) / (2 * H);
+
+            if (Math.abs(k) < 1e-6) {
+                return areaObjetivo / b;
+            }
+
+            // Solución cuadrática: k*h^2 + b*h - areaObjetivo = 0
+            return (-b + Math.sqrt(b * b + 4 * k * areaObjetivo)) / (2 * k);
+        }
 
         fetch('data/data_starbucks_detallado.json')
             .then(res => res.json())
@@ -763,7 +785,7 @@
             );
         }
 
-        /* --- Inicialización del Vaso D3 --- */
+        /* --- Inicialización del Vaso D3 con área proporcional --- */
         function inicializarD3() {
             d3.select("#vaso-svg").remove();
 
@@ -780,8 +802,6 @@
 
             const centerX = w / 2;
             const centerY = h / 2 + 35;
-
-            sugarScale = d3.scaleLinear().domain([0, 90]).range([cupHeight, 0]).clamp(true);
 
             const xTopLeft = centerX - cupWidthTop / 2;
             const xTopRight = centerX + cupWidthTop / 2;
@@ -816,7 +836,9 @@
                 .attr("points", `${xTopLeft + 12},${yTop + 10} ${xTopLeft + 25},${yTop + 10} ${xBottomLeft + 25},${yBottom - 10} ${xBottomLeft + 12},${yBottom - 10}`)
                 .attr("fill", "rgba(255,255,255,0.08)");
 
-            const y25 = yTop + sugarScale(25);
+            // LÍNEAS OMS: Calculadas por área para mantener Lie Factor = 1
+            const h25 = alturaParaAzucar(25);
+            const y25 = yBottom - h25;
             svg.append("line").attr("class", "oms-line-25")
                 .attr("x1", xTopLeft - 30).attr("x2", xTopRight + 30)
                 .attr("y1", y25).attr("y2", y25);
@@ -825,7 +847,8 @@
                 .attr("x", xTopRight + 38).attr("y", y25 + 4)
                 .text("OMS IDEAL (25g)");
 
-            const y50 = yTop + sugarScale(50);
+            const h50 = alturaParaAzucar(50);
+            const y50 = yBottom - h50;
             svg.append("line").attr("class", "oms-line-50")
                 .attr("x1", xTopLeft - 30).attr("x2", xTopRight + 30)
                 .attr("y1", y50).attr("y2", y50);
@@ -873,11 +896,11 @@
             const container = document.getElementById('viz-container');
             const h = container.clientHeight;
             const centerY = h / 2 + 35;
-            const yTop = centerY - cupHeight / 2;
             const yBottom = centerY + cupHeight / 2;
 
-            const fillY = yTop + sugarScale(gramosAzucar);
-            const fillHeight = yBottom - fillY;
+            // Altura y posición calculadas para área proporcional
+            const fillHeight = alturaParaAzucar(gramosAzucar);
+            const fillY = yBottom - fillHeight;
 
             // Líquido en degradé rojo según el azúcar
             const colorLiquido = d3.scaleLinear().domain([0, 50]).range(["#ffffff", "#ff4757"]).clamp(true);
