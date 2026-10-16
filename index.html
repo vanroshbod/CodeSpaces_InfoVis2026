@@ -12,15 +12,15 @@
         body { 
             margin: 0; 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: #141414; 
-            color: #e0e0e0; 
+            background-color: #604c4c; 
+            color: #fffcfe; 
             overflow: hidden; 
             display: flex; 
             height: 100vh; 
             position: relative; 
         }
 
-        /* --- Panel de Controles (Sidebar) estilo Starbucks --- */
+        /* --- Panel de Controles (Sidebar) estilo Espresso Starbucks --- */
         #sidebar {
             width: 360px;
             min-width: 360px;
@@ -28,14 +28,14 @@
             max-height: 100vh;          
             overflow-y: auto !important;
             overflow-x: hidden;         
-            background-color: #1a1a1a; 
+            background-color: #362415; 
             padding: 25px 15px 0px 25px;
-            box-shadow: 4px 0 15px rgba(0,0,0,0.5); 
+            box-shadow: 4px 0 20px rgba(0,0,0,0.45); 
             z-index: 10;
             display: block;
             box-sizing: border-box;     
             scrollbar-width: thin;
-            scrollbar-color: #0B421A #141414;
+            scrollbar-color: #0B421A #24160c;
         }
 
         #sidebar-scroll-content {
@@ -50,20 +50,20 @@
             display: block !important;
         }
         #sidebar::-webkit-scrollbar-track {
-            background: #141414;
-            border-left: 1px solid #282828;
+            background: #24160c;
+            border-left: 1px solid #3d281a;
         }
         #sidebar::-webkit-scrollbar-thumb {
             background-color: #0B421A;
             border-radius: 6px;
-            border: 2px solid #141414;
+            border: 2px solid #24160c;
         }
         #sidebar::-webkit-scrollbar-thumb:hover {
             background-color: #00704A;
         }
 
         #sidebar h2 { 
-            color: #fff; 
+            color: #fffcfe; 
             font-size: 1.35em; 
             border-bottom: 2px solid #00704A; 
             padding-bottom: 8px; 
@@ -76,27 +76,30 @@
             font-weight: bold; 
         }
         .instrucciones { 
-            font-size: 0.85em; 
-            color: #bbb; 
+            font-size: 0.88em; 
+            color: #f0e6dc; 
             margin-bottom: 10px; 
-            line-height: 1.4; 
+            line-height: 1.45; 
         }
 
         #search-box {
             width: 100%; 
             padding: 10px; 
-            background-color: #222; 
-            border: 1px solid #333;
-            color: #fff; 
+            background-color: #4a3628; 
+            border: 1px solid #6b5240;
+            color: #fffcfe; 
             border-radius: 6px; 
             margin-bottom: 10px; 
             box-sizing: border-box; 
             font-size: 0.95em;
             transition: border-color 0.2s;
         }
+        #search-box::placeholder {
+            color: #c9b8ab;
+        }
         #search-box:focus { 
             outline: none; 
-            border-color: #00704A; 
+            border-color: #EAC784; 
         }
 
         .lista-opciones {
@@ -105,7 +108,7 @@
             gap: 8px; 
             padding-right: 5px;
             scrollbar-width: thin;
-            scrollbar-color: #0B421A #222;
+            scrollbar-color: #0B421A #24160c;
         }
 
         #lista-bebidas {
@@ -119,23 +122,24 @@
         }
 
         .lista-opciones::-webkit-scrollbar { width: 6px; }
-        .lista-opciones::-webkit-scrollbar-track { background: #222; border-radius: 4px; }
+        .lista-opciones::-webkit-scrollbar-track { background: #24160c; border-radius: 4px; }
         .lista-opciones::-webkit-scrollbar-thumb { background: #0B421A; border-radius: 4px; }
 
         .opcion-btn {
-            background-color: #222; 
-            border: 1px solid #333; 
-            color: #ccc; 
+            background-color: #443022; 
+            border: 1px solid #5a4231; 
+            color: #f5ede6; 
             padding: 10px;
             text-align: left; 
             border-radius: 6px; 
             cursor: pointer; 
             transition: all 0.2s; 
             font-size: 0.88em;
+            font-weight: 500;
         }
         .opcion-btn:hover:not(:disabled) { 
-            background-color: #2a2a2a; 
-            border-color: #00704A; 
+            background-color: #553e2d; 
+            border-color: #EAC784; 
             color: #fff;
         }
         .opcion-btn.active { 
@@ -145,21 +149,21 @@
             border-color: #EAC784; 
         }
         .opcion-btn:disabled { 
-            opacity: 0.3; 
+            opacity: 0.35; 
             cursor: not-allowed; 
         }
 
         .grid-opciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
-        /* --- Panel de Visualización Central --- */
+        /* --- Panel de Visualización Central (#604c4c) --- */
         #viz-container { 
             flex: 1; 
             position: relative; 
             overflow: hidden;
-            background: radial-gradient(circle at center, #242424 0%, #121212 100%);
+            background: radial-gradient(circle at center, #725b5b 0%, #604c4c 100%);
         }
 
-        /* Cabecera izquierda */
+        /* Cabecera izquierda con alto contraste */
         #viz-header { 
             position: absolute; 
             top: 25px; 
@@ -168,20 +172,35 @@
             max-width: 320px; 
             pointer-events: none;
         }
-        .viz-title { color: #fff; font-size: 1.8em; font-weight: bold; margin: 0 0 8px 0; line-height: 1.15; }
-        .viz-title span { color: #00704A; }
-        .viz-subtitle { color: #aaa; font-size: 0.9em; line-height: 1.45; margin: 0; }
+        .viz-title { 
+            color: #fffcfe; 
+            font-size: 1.85em; 
+            font-weight: 800; 
+            margin: 0 0 8px 0; 
+            line-height: 1.15; 
+            text-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+        .viz-title span { 
+            color: #EAC784; 
+        }
+        .viz-subtitle { 
+            color: #f3ede6; 
+            font-size: 0.92em; 
+            line-height: 1.45; 
+            margin: 0; 
+            text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+        }
 
         /* Panel métricas de azúcar superior derecho */
         #metricas-panel {
             position: absolute; 
             top: 25px; 
             right: 25px; 
-            background: rgba(20,20,20,0.92);
+            background: rgba(54, 36, 21, 0.94);
             padding: 16px 18px; 
             border-radius: 12px; 
-            border: 1px solid #333;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
+            border: 1px solid rgba(234, 199, 132, 0.3);
+            box-shadow: 0 12px 32px rgba(0,0,0,0.55); 
             width: 220px; 
             opacity: 0; 
             transition: opacity 0.3s;
@@ -189,13 +208,13 @@
             box-sizing: border-box;
         }
         .metrica-valor { font-size: 2.5em; font-weight: bold; margin: 6px 0; line-height: 1; }
-        .metrica-label { font-size: 0.78em; color: #aaa; text-transform: uppercase; letter-spacing: 1px; }
+        .metrica-label { font-size: 0.78em; color: #f0e6dc; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
         
         .alerta-oms {
             padding: 8px 10px; margin-top: 10px; font-size: 0.78em; display: none; font-weight: bold; border-radius: 4px; line-height: 1.3;
         }
-        .alerta-precaucion { background: rgba(255, 165, 2, 0.1); border-left: 4px solid #ffa502; color: #ffa502; }
-        .alerta-peligro { background: rgba(255, 71, 87, 0.15); border-left: 4px solid #ff4757; color: #ff4757; }
+        .alerta-precaucion { background: rgba(255, 165, 2, 0.18); border-left: 4px solid #ffa502; color: #ffd27d; }
+        .alerta-peligro { background: rgba(255, 71, 87, 0.22); border-left: 4px solid #ff4757; color: #ff8b97; }
 
         /* Mini Gráfico Overview ubicado a la IZQUIERDA del vaso */
         #overview-panel {
@@ -207,23 +226,23 @@
             overflow: hidden;
             box-sizing: border-box;
             padding: 14px 16px;
-            background: rgba(20, 20, 20, 0.94);
-            border: 1px solid #333;
+            background: rgba(54, 36, 21, 0.94);
+            border: 1px solid rgba(234, 199, 132, 0.3);
             border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.55);
             z-index: 20;
         }
 
         #overview-panel h3 {
             margin: 0 0 4px;
-            color: #00704A;
+            color: #EAC784;
             font-size: 1.05em;
         }
 
         #overview-panel p {
             margin: 0 0 8px;
-            color: #aaa;
-            font-size: 0.75em;
+            color: #f0e6dc;
+            font-size: 0.78em;
             line-height: 1.35;
         }
 
@@ -235,9 +254,10 @@
 
         #overview-detalle {
             margin-top: 6px;
-            color: #ccc;
-            font-size: 0.78em;
+            color: #fffcfe;
+            font-size: 0.8em;
             line-height: 1.35;
+            font-weight: 500;
         }
 
         /* --- Tarjeta Reloj Energético (180°) - Derecha Inferior --- */
@@ -246,11 +266,11 @@
             right: 25px;
             bottom: 75px;
             width: 220px;
-            background: rgba(20, 20, 20, 0.94);
-            border: 1px solid #333;
+            background: rgba(54, 36, 21, 0.94);
+            border: 1px solid rgba(234, 199, 132, 0.3);
             border-radius: 12px;
             padding: 12px 14px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.55);
             z-index: 20;
             box-sizing: border-box;
             opacity: 0;
@@ -290,30 +310,31 @@
         .reloj-cal-val {
             font-size: 1.6em;
             font-weight: 800;
-            color: #fff;
+            color: #fffcfe;
             line-height: 1.1;
         }
 
         .reloj-sub {
-            font-size: 0.74em;
-            color: #aaa;
+            font-size: 0.76em;
+            color: #f0e6dc;
             margin-top: 2px;
         }
 
         .reloj-ejercicio {
             margin-top: 6px;
             padding-top: 6px;
-            border-top: 1px solid #2a2a2a;
-            font-size: 0.76em;
+            border-top: 1px solid #4d3627;
+            font-size: 0.78em;
             color: #EAC784;
             text-align: center;
+            font-weight: 600;
         }
 
         /* Cartel Alerta Peor Caso Ubicado Abajo del Vaso */
         @keyframes pulse-alerta {
-            0% { transform: translateX(-50%) scale(1); box-shadow: 0 0 15px rgba(255, 71, 87, 0.4); }
-            50% { transform: translateX(-50%) scale(1.03); box-shadow: 0 0 25px rgba(255, 71, 87, 0.8); }
-            100% { transform: translateX(-50%) scale(1); box-shadow: 0 0 15px rgba(255, 71, 87, 0.4); }
+            0% { transform: translateX(-50%) scale(1); box-shadow: 0 0 18px rgba(255, 71, 87, 0.5); }
+            50% { transform: translateX(-50%) scale(1.03); box-shadow: 0 0 28px rgba(255, 71, 87, 0.9); }
+            100% { transform: translateX(-50%) scale(1); box-shadow: 0 0 18px rgba(255, 71, 87, 0.5); }
         }
         #banner-peor-caso {
             position: absolute;
@@ -321,11 +342,11 @@
             left: 50%;
             transform: translateX(-50%);
             z-index: 30;
-            background: rgba(30, 10, 10, 0.94);
+            background: rgba(45, 12, 12, 0.96);
             border: 2px solid #ff4757;
             border-radius: 8px;
-            padding: 10px 20px;
-            color: #ff4757;
+            padding: 10px 22px;
+            color: #ff8b97;
             font-size: 0.95em;
             font-weight: 800;
             letter-spacing: 0.5px;
@@ -336,11 +357,24 @@
             white-space: nowrap;
         }
 
-        .oms-label-25 { fill: #ffa502; font-size: 10.5px; font-weight: bold; letter-spacing: 0.5px; }
+        .oms-label-25 { 
+            fill: #ffd074; 
+            font-size: 10.5px; 
+            font-weight: bold; 
+            letter-spacing: 0.5px; 
+            filter: drop-shadow(0px 1px 3px rgba(0,0,0,0.8));
+        }
         .oms-line-25 { stroke: #ffa502; stroke-width: 2; stroke-dasharray: 5,4; }
-        .oms-label-50 { fill: #ff4757; font-size: 10.5px; font-weight: bold; letter-spacing: 0.5px; }
+        
+        .oms-label-50 { 
+            fill: #ff9aa4; 
+            font-size: 10.5px; 
+            font-weight: bold; 
+            letter-spacing: 0.5px; 
+            filter: drop-shadow(0px 1px 3px rgba(0,0,0,0.8));
+        }
         .oms-line-50 { stroke: #ff4757; stroke-width: 2; stroke-dasharray: 5,4; }
-        .terron { fill: #fff; opacity: 0.8; rx: 4; ry: 4; }
+        .terron { fill: #fff; opacity: 0.9; rx: 4; ry: 4; }
 
         /* Botón flotante de Información (i) */
         #btn-info-modal {
@@ -348,9 +382,9 @@
             top: 25px;
             right: 20px;
             z-index: 25;
-            background-color: #222;
-            color: #00704A;
-            border: 1px solid #00704A;
+            background-color: #362415;
+            color: #EAC784;
+            border: 1px solid #EAC784;
             width: 38px;
             height: 38px;
             border-radius: 50%;
@@ -360,11 +394,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+            box-shadow: 0 4px 14px rgba(0,0,0,0.5);
             transition: all 0.2s;
         }
         #btn-info-modal:hover {
             background-color: #00704A;
+            border-color: #00704A;
             color: #fff;
             transform: scale(1.08);
         }
@@ -384,33 +419,33 @@
             box-sizing: border-box;
         }
         #modal-card {
-            background-color: #1e1e1e;
-            color: #e0e0e0;
-            border: 1px solid #333;
-            border-radius: 10px;
+            background-color: #362415;
+            color: #fffcfe;
+            border: 1px solid #604c4c;
+            border-radius: 12px;
             max-width: 760px;
             width: 100%;
             max-height: 90vh;
             overflow-y: auto;
             padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            box-shadow: 0 14px 40px rgba(0,0,0,0.85);
             box-sizing: border-box;
         }
-        #modal-card h1 { color: #fff; font-size: 1.45em; margin-top: 0; border-bottom: 2px solid #00704A; padding-bottom: 8px; }
-        #modal-card h2 { color: #00704A; font-size: 1.15em; margin-top: 18px; }
-        #modal-card p { line-height: 1.6; color: #ccc; font-size: 0.95em; }
-        #modal-card a { color: #EAC784; text-decoration: none; }
+        #modal-card h1 { color: #fffcfe; font-size: 1.45em; margin-top: 0; border-bottom: 2px solid #00704A; padding-bottom: 8px; }
+        #modal-card h2 { color: #EAC784; font-size: 1.15em; margin-top: 18px; }
+        #modal-card p { line-height: 1.6; color: #f0e6dc; font-size: 0.95em; }
+        #modal-card a { color: #EAC784; text-decoration: none; font-weight: 600; }
         #modal-card a:hover { text-decoration: underline; }
         .modal-imagen { max-width: 100%; height: auto; display: block; margin: 1.5rem auto; border-radius: 8px; }
 
         .modal-nav-group { display: flex; gap: 12px; margin-top: 25px; }
         .btn-modal-nav {
-            flex: 1; padding: 12px; background-color: #222; color: #EAC784;
-            border: 1px solid #00704A; border-radius: 6px; text-align: center;
+            flex: 1; padding: 12px; background-color: #4a3628; color: #EAC784;
+            border: 1px solid #EAC784; border-radius: 6px; text-align: center;
             text-decoration: none; font-weight: bold; font-size: 0.95em;
             transition: all 0.2s; box-sizing: border-box; display: inline-block;
         }
-        .btn-modal-nav:hover { background-color: #00704A; color: #fff; }
+        .btn-modal-nav:hover { background-color: #00704A; border-color: #00704A; color: #fff; }
 
         #btn-modal-ok {
             display: block; width: 100%; padding: 12px; background-color: #00704A;
@@ -439,7 +474,7 @@
             <p>Fuente de datos: <a href="https://www.kaggle.com/datasets/ashishpatel26/starbucks_drinkmenu_expanded/data" target="_blank" rel="noopener noreferrer">Starbucks Drink Menu Dataset (Kaggle)</a>.</p>
 
             <h2>Desarrollado por:</h2>
-            <ul style="color: #ccc; line-height: 1.8;">
+            <ul style="color: #f0e6dc; line-height: 1.8;">
                 <li>Camila Matamala</li>
                 <li>Fernanda Oyarzún</li>
                 <li>Octavia Robledo</li>
@@ -491,14 +526,14 @@
         <!-- Panel métricas de azúcar superior derecho -->
         <div id="metricas-panel">
             <div class="metrica-label">Contenido de Azúcar</div>
-            <div id="valor-azucar" class="metrica-valor" style="color: #fff;">0g</div>
-            <div id="equivalencia-cucharadas" style="color: #ccc; font-size: 0.85em; margin-bottom: 12px;">0 cucharaditas 🥄</div>
+            <div id="valor-azucar" class="metrica-valor" style="color: #fffcfe;">0g</div>
+            <div id="equivalencia-cucharadas" style="color: #f0e6dc; font-size: 0.85em; margin-bottom: 12px;">0 cucharaditas 🥄</div>
             
             <div class="metrica-label">Impacto vs Máximo OMS</div>
-            <div id="barra-impacto" style="width: 100%; height: 7px; background: #333; border-radius: 4px; overflow: hidden; margin-top: 6px;">
+            <div id="barra-impacto" style="width: 100%; height: 7px; background: #24160c; border-radius: 4px; overflow: hidden; margin-top: 6px;">
                 <div id="fill-impacto" style="width: 0%; height: 100%; background: #ff4757; transition: width 0.5s, background 0.5s;"></div>
             </div>
-            <div id="pct-impacto" style="text-align: right; font-size: 0.8em; color: #888; margin-top: 4px;">0% del límite diario</div>
+            <div id="pct-impacto" style="text-align: right; font-size: 0.8em; color: #f0e6dc; margin-top: 4px;">0% del límite diario</div>
 
             <div id="alerta-oms" class="alerta-oms"></div>
         </div>
@@ -647,14 +682,12 @@
                 procesarSeleccion('bebida', peorCasoGlobal.Bebida);
             }
 
-            // Intento de disparo sonoro inicial
             intentarReproducirSonidoInicial();
         })
         .catch(error => {
             console.error("Error al cargar datos o sonidos:", error);
         });
 
-        // Intentar reproducir sonido al cargar
         async function intentarReproducirSonidoInicial() {
             if (sonidoInicialReproducido || !estadoActual.datosFinales) return;
             try {
@@ -664,11 +697,10 @@
                 reproducirSonidos(estadoActual.datosFinales);
                 sonidoInicialReproducido = true;
             } catch (e) {
-                // Autoplay bloqueado por el navegador; queda en espera para el primer gesto
+                // Autoplay en espera de primer gesto
             }
         }
 
-        // Desbloqueo por primera interacción del usuario si el navegador restringió el autoplay
         const desbloquearAudioInicial = async () => {
             if (Tone.context.state !== 'running') {
                 await Tone.start();
@@ -806,7 +838,7 @@
             });
         }
 
-        /* --- Mini Gráfico de Dispersión (Overview) --- */
+        /* --- Mini Gráfico de Dispersión con Ejes Iluminados para Alto Contraste --- */
         function renderizarOverview() {
             const contenedor = d3.select("#overview-grafico");
             contenedor.selectAll("*").remove();
@@ -854,32 +886,36 @@
                 .nice()
                 .range([alto - margen.bottom, margen.top]);
 
+            // Eje X con etiquetas en crema brillante
             svgOverview.append("g")
                 .attr("transform", `translate(0,${alto - margen.bottom})`)
                 .call(d3.axisBottom(x).ticks(4))
-                .call(g => g.selectAll("text").attr("fill", "#aaa").attr("font-size", 8.5))
-                .call(g => g.selectAll("path,line").attr("stroke", "#555"));
+                .call(g => g.selectAll("text").attr("fill", "#f3ede6").attr("font-size", 8.5))
+                .call(g => g.selectAll("path,line").attr("stroke", "#8c7260"));
 
             svgOverview.append("text")
                 .attr("x", ancho / 2)
                 .attr("y", alto - 3)
-                .attr("fill", "#aaa")
+                .attr("fill", "#fffcfe")
                 .attr("font-size", 9)
+                .attr("font-weight", "600")
                 .attr("text-anchor", "middle")
                 .text("Promedio Azúcar (g)");
 
+            // Eje Y con etiquetas en crema brillante
             svgOverview.append("g")
                 .attr("transform", `translate(${margen.left},0)`)
                 .call(d3.axisLeft(y).ticks(4))
-                .call(g => g.selectAll("text").attr("fill", "#aaa").attr("font-size", 8.5))
-                .call(g => g.selectAll("path,line").attr("stroke", "#555"));
+                .call(g => g.selectAll("text").attr("fill", "#f3ede6").attr("font-size", 8.5))
+                .call(g => g.selectAll("path,line").attr("stroke", "#8c7260"));
 
             svgOverview.append("text")
                 .attr("transform", "rotate(-90)")
                 .attr("x", -(alto / 2))
                 .attr("y", 10)
-                .attr("fill", "#aaa")
+                .attr("fill", "#fffcfe")
                 .attr("font-size", 8.5)
+                .attr("font-weight", "600")
                 .attr("text-anchor", "middle")
                 .text("Calorías (Cal)");
 
@@ -892,11 +928,11 @@
                 .join("circle")
                 .attr("cx", d => x(Number(d["Sugars (g)"])))
                 .attr("cy", d => y(Number(d["Calories (Cal)"])))
-                .attr("r", d => esSeleccionado(d) ? 4.5 : 2.4)
-                .attr("fill", d => esSeleccionado(d) ? "#EAC784" : "#00704A")
+                .attr("r", d => esSeleccionado(d) ? 4.8 : 2.5)
+                .attr("fill", d => esSeleccionado(d) ? "#EAC784" : "#4ade80")
                 .attr("stroke", d => esSeleccionado(d) ? "#fff" : "#0B421A")
-                .attr("stroke-width", d => esSeleccionado(d) ? 1.5 : 0.6)
-                .attr("opacity", d => esSeleccionado(d) ? 1 : 0.7)
+                .attr("stroke-width", d => esSeleccionado(d) ? 1.6 : 0.7)
+                .attr("opacity", d => esSeleccionado(d) ? 1 : 0.85)
                 .style("cursor", "pointer");
 
             puntos.append("title")
@@ -918,7 +954,7 @@
             );
         }
 
-        /* --- RELOJ ENERGÉTICO EN 180° CON ARCO CONTINUO EN DEGRADÉ --- */
+        /* --- RELOJ ENERGÉTICO EN 180° --- */
         let svgReloj, agujaReloj, anguloActualReloj = -90;
 
         function inicializarRelojEnergetico() {
@@ -935,7 +971,6 @@
                 .attr("width", "100%")
                 .attr("height", "100%");
 
-            // Gradiente continuo accesible para daltónicos
             const defs = svgReloj.append("defs");
             const gradiente = defs.append("linearGradient")
                 .attr("id", "gradiente-reloj-daltonico")
@@ -944,9 +979,9 @@
                 .attr("x2", "100%")
                 .attr("y2", "0%");
 
-            gradiente.append("stop").attr("offset", "0%").attr("stop-color", "#38bdf8");   // Cian frío (0 Cal)
-            gradiente.append("stop").attr("offset", "45%").attr("stop-color", "#EAC784");  // Oro Starbucks (Moderado)
-            gradiente.append("stop").attr("offset", "100%").attr("stop-color", "#c026d3"); // Magenta/Púrpura (Alta energía)
+            gradiente.append("stop").attr("offset", "0%").attr("stop-color", "#38bdf8");   
+            gradiente.append("stop").attr("offset", "45%").attr("stop-color", "#EAC784");  
+            gradiente.append("stop").attr("offset", "100%").attr("stop-color", "#c026d3"); 
 
             const g = svgReloj.append("g")
                 .attr("transform", `translate(${w / 2}, ${h - 12})`);
@@ -961,20 +996,20 @@
             g.append("path")
                 .attr("d", arcGen())
                 .attr("fill", "url(#gradiente-reloj-daltonico)")
-                .attr("stroke", "#222")
-                .attr("stroke-width", 1);
+                .attr("stroke", "#24160c")
+                .attr("stroke-width", 1.2);
 
             g.append("text").attr("x", -rExterior - 3).attr("y", -1)
-                .attr("fill", "#888").attr("font-size", 8.5).attr("text-anchor", "end").text("0");
+                .attr("fill", "#f0e6dc").attr("font-size", 8.5).attr("font-weight", "600").attr("text-anchor", "end").text("0");
             g.append("text").attr("x", rExterior + 3).attr("y", -1)
-                .attr("fill", "#888").attr("font-size", 8.5).attr("text-anchor", "start").text("500+");
+                .attr("fill", "#f0e6dc").attr("font-size", 8.5).attr("font-weight", "600").attr("text-anchor", "start").text("500+");
 
             agujaReloj = g.append("g").attr("class", "aguja-grupo");
 
             agujaReloj.append("polygon")
                 .attr("points", "0,-62 -3,0 3,0")
                 .attr("fill", "#ffffff")
-                .attr("stroke", "#141414")
+                .attr("stroke", "#24160c")
                 .attr("stroke-width", 1);
 
             agujaReloj.append("circle")
@@ -1029,7 +1064,7 @@
             }
         }
 
-        /* --- Inicialización del Vaso D3 --- */
+        /* --- Inicialización del Vaso D3 con Líneas OMS resaltadas --- */
         function inicializarD3() {
             d3.select("#vaso-svg").remove();
 
@@ -1069,18 +1104,20 @@
                 .attr("fill", "#ffffff")
                 .attr("clip-path", "url(#cup-clip)");
 
+            // Contorno blanco nítido del vaso
             svg.append("polygon")
                 .attr("points", polygonPoints)
                 .attr("fill", "none")
-                .attr("stroke", "rgba(255,255,255,0.8)")
-                .attr("stroke-width", 3.5)
+                .attr("stroke", "rgba(255,255,255,0.92)")
+                .attr("stroke-width", 3.8)
                 .attr("stroke-linejoin", "round");
                 
+            // Brillo lateral de cristal
             svg.append("polygon")
                 .attr("points", `${xTopLeft + 12},${yTop + 10} ${xTopLeft + 25},${yTop + 10} ${xBottomLeft + 25},${yBottom - 10} ${xBottomLeft + 12},${yBottom - 10}`)
-                .attr("fill", "rgba(255,255,255,0.08)");
+                .attr("fill", "rgba(255,255,255,0.12)");
 
-            // Líneas OMS proporcionales al área (Lie Factor = 1)
+            // Líneas de advertencia OMS adaptadas al contraste
             const h25 = alturaParaAzucar(25);
             const y25 = yBottom - h25;
             svg.append("line").attr("class", "oms-line-25")
@@ -1119,7 +1156,6 @@
             const gramosAzucar = Number(datos['Sugars (g)']) || 0;
             const calorias = Number(datos['Calories (Cal)']) || 0;
 
-            // 1. Sonido de Energía / Calorías (Banda media-grave)
             if (energyPlayer.loaded) {
                 energyPlayer.stop();
 
@@ -1138,7 +1174,6 @@
                 energyPlayer.start(Tone.now(), 0, 1.2);
             }
 
-            // 2. Sonido de Azúcar (Agudos puros > 3 kHz) desfasado 250 ms
             if (sugarPlayer.loaded && gramosAzucar > 0) {
                 const volSugar = d3.scaleLinear()
                     .domain([0, 80])
