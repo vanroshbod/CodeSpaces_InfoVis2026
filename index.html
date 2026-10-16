@@ -149,13 +149,13 @@
             padding: 8px 10px; margin-top: 10px; font-size: 0.8em; display: none; font-weight: bold; border-radius: 4px; line-height: 1.3;
         }
         .alerta-precaucion { background: rgba(255, 165, 2, 0.1); border-left: 4px solid #ffa502; color: #ffa502; }
-        .alerta-peligro { background: rgba(255, 71, 87, 0.1); border-left: 4px solid #ff4757; color: #ff4757; }
+        .alerta-peligro { background: rgba(255, 71, 87, 0.1); border-left: 4px solid #11491f; color: #439e43; }
 
         /* Cartel Alerta Peor Caso Ubicado Abajo del Vaso */
         @keyframes pulse-alerta {
-            0% { transform: translateX(-50%) scale(1); box-shadow: 0 0 15px rgba(255, 71, 87, 0.4); }
-            50% { transform: translateX(-50%) scale(1.03); box-shadow: 0 0 25px rgba(255, 71, 87, 0.8); }
-            100% { transform: translateX(-50%) scale(1); box-shadow: 0 0 15px rgba(255, 71, 87, 0.4); }
+            0% { transform: translateX(-50%) scale(1); box-shadow: 0 0 15px rgba(71, 255, 102, 0.4); }
+            50% { transform: translateX(-50%) scale(1.03); box-shadow: 0 0 25px rgba(71, 255, 80, 0.8); }
+            100% { transform: translateX(-50%) scale(1); box-shadow: 0 0 15px rgba(86, 255, 71, 0.4); }
         }
         #banner-peor-caso {
             position: absolute;
@@ -164,10 +164,10 @@
             transform: translateX(-50%);
             z-index: 30;
             background: rgba(30, 10, 10, 0.94);
-            border: 2px solid #ff4757;
+            border: 2px solid #47ff50;
             border-radius: 8px;
             padding: 10px 20px;
-            color: #ff4757;
+            color: #47ff47;
             font-size: 0.95em;
             font-weight: 800;
             letter-spacing: 0.5px;
@@ -180,8 +180,8 @@
 
         .oms-label-25 { fill: #ffa502; font-size: 11px; font-weight: bold; letter-spacing: 1px; }
         .oms-line-25 { stroke: #ffa502; stroke-width: 2; stroke-dasharray: 6,4; }
-        .oms-label-50 { fill: #ff4757; font-size: 11px; font-weight: bold; letter-spacing: 1px; }
-        .oms-line-50 { stroke: #ff4757; stroke-width: 2; stroke-dasharray: 6,4; }
+        .oms-label-50 { fill: #47ff50; font-size: 11px; font-weight: bold; letter-spacing: 1px; }
+        .oms-line-50 { stroke: #47ff56; stroke-width: 2; stroke-dasharray: 6,4; }
         .terron { fill: #fff; opacity: 0.8; rx: 4; ry: 4; }
 
         /* Botón flotante de Información (i) */
@@ -261,6 +261,71 @@
             transition: background-color 0.2s;
         }
         #btn-modal-ok:hover { background-color: #00a8cc; }
+
+        /* --- Vista general de azúcar en el menú --- */
+        #overview-panel {
+            position: absolute;
+            right: 20px;
+            bottom: 100px;
+            width: 270px;
+            max-height: 38vh;
+            overflow: hidden;
+            box-sizing: border-box;
+            padding: 12px;
+            background: rgba(20, 20, 20, 0.94);
+            border: 1px solid #333;
+            border-radius: 10px;
+            z-index: 20;
+        }
+
+        #overview-panel h3 {
+            margin: 0 0 6px;
+            color: #00d2ff;
+            font-size: 1em;
+        }
+
+        #overview-panel p {
+            margin: 0 0 8px;
+            color: #aaa;
+            font-size: 0.75em;
+            line-height: 1.35;
+        }
+
+        #overview-grafico {
+            width: 100%;
+        }
+
+        #overview-grafico svg {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        #overview-detalle {
+            margin-top: 8px;
+            color: #ccc;
+            font-size: 0.8em;
+            line-height: 1.4;
+        }
+
+        @media (max-width: 1100px) {
+            #overview-panel {
+                width: 220px;
+                right: 12px;
+                bottom: 85px;
+            }
+            #metricas-panel {
+                right: 60px;
+            }
+        }
+
+        @media (max-height: 700px) {
+            #overview-panel {
+                bottom: 65px;
+                max-height: 32vh;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -343,6 +408,14 @@
 
             <div id="alerta-oms" class="alerta-oms"></div>
         </div>
+
+        <!-- Vista general de las variantes del menú -->
+        <div id="overview-panel">
+            <h3>Azúcar en el menú</h3>
+            <p>Cada punto representa una variante. Haz clic para seleccionarla.</p>
+            <div id="overview-grafico"></div>
+            <div id="overview-detalle">Cargando datos...</div>
+        </div>
     </div>
 
     <script>
@@ -386,6 +459,29 @@
         let cupHeight = 340, cupWidthTop = 210, cupWidthBottom = 150;
         let gTerrones;
 
+        // Devuelve la altura necesaria para que el area del liquido
+        // sea proporcional a los gramos de azucar.
+        function alturaParaAzucar(gramos) {
+            const H = cupHeight;
+            const b = cupWidthBottom;
+            const B = cupWidthTop;
+            const maxAzucar = 90;
+
+            const g = Math.max(0, Math.min(Number(gramos) || 0, maxAzucar));
+            const areaTotal = ((B + b) / 2) * H;
+            const areaObjetivo = areaTotal * g / maxAzucar;
+            const a = (B - b) / (2 * H);
+
+            // Resolver a*h^2 + b*h - areaObjetivo = 0.
+            if (Math.abs(a) < 1e-10) {
+                return areaObjetivo / b;
+            }
+
+            return (-b + Math.sqrt(
+                b * b + 4 * a * areaObjetivo
+            )) / (2 * a);
+        }
+
         fetch('data/data_starbucks_detallado.json')
             .then(res => res.json())
             .then(data => {
@@ -400,6 +496,7 @@
                 
                 inicializarD3();
                 renderizarBebidasVis(Array.from(agrupadoPorBebida.keys()).sort());
+                renderizarOverview();
 
                 peorCasoGlobal = datosOriginales.reduce((prev, curr) => {
                     return (Number(curr['Sugars (g)']) || 0) > (Number(prev['Sugars (g)']) || 0) ? curr : prev;
@@ -489,7 +586,11 @@
             }
 
             actualizarVasoD3();
-            if (estadoActual.datosFinales) reproducirSonidos(estadoActual.datosFinales);
+            renderizarOverview();
+
+            if (estadoActual.datosFinales) {
+                reproducirSonidos(estadoActual.datosFinales);
+            }
         }
 
         function renderizarBebidasVis(nombres) {
@@ -531,6 +632,97 @@
                 btn.onclick = () => procesarSeleccion('leche', leche);
                 contenedor.appendChild(btn);
             });
+        }
+
+
+        function renderizarOverview() {
+            const contenedor = d3.select("#overview-grafico");
+            contenedor.selectAll("*").remove();
+
+            const datos = datosOriginales.filter(d =>
+                Number.isFinite(Number(d["Sugars (g)"]))
+            );
+
+            const ancho = 250;
+            const alto = 150;
+            const margen = { top: 8, right: 12, bottom: 30, left: 34 };
+
+            if (datos.length === 0) {
+                d3.select("#overview-detalle").text("No hay datos disponibles.");
+                return;
+            }
+
+            const maxAzucar = d3.max(datos, d => Number(d["Sugars (g)"])) || 10;
+
+            const svgOverview = contenedor.append("svg")
+                .attr("viewBox", `0 0 ${ancho} ${alto}`)
+                .attr("role", "img")
+                .attr("aria-label",
+                    "Distribución de gramos de azúcar de las variantes de bebidas");
+
+            const x = d3.scaleLinear()
+                .domain([0, Math.max(10, maxAzucar)])
+                .nice()
+                .range([margen.left, ancho - margen.right]);
+
+            const y = d3.scaleLinear()
+                .domain([0, Math.max(1, datos.length - 1)])
+                .range([alto - margen.bottom, margen.top]);
+
+            svgOverview.append("g")
+                .attr("transform", `translate(0,${alto - margen.bottom})`)
+                .call(d3.axisBottom(x).ticks(4))
+                .call(g => g.selectAll("text")
+                    .attr("fill", "#aaa")
+                    .attr("font-size", 9))
+                .call(g => g.selectAll("path,line")
+                    .attr("stroke", "#555"));
+
+            svgOverview.append("text")
+                .attr("x", ancho / 2)
+                .attr("y", alto - 3)
+                .attr("fill", "#aaa")
+                .attr("font-size", 10)
+                .attr("text-anchor", "middle")
+                .text("Azúcar (g)");
+
+            const puntos = svgOverview.selectAll("circle")
+                .data(datos)
+                .join("circle")
+                .attr("cx", d => x(Number(d["Sugars (g)"])))
+                .attr("cy", (d, i) => y(i))
+                .attr("r", d =>
+                    d === estadoActual.datosFinales ? 4.5 : 2.2)
+                .attr("fill", d =>
+                    d === estadoActual.datosFinales ? "#ffa502" : "#00d2ff")
+                .attr("stroke", d =>
+                    d === estadoActual.datosFinales ? "#fff" : "none")
+                .attr("stroke-width", 1)
+                .attr("opacity", d =>
+                    d === estadoActual.datosFinales ? 1 : 0.6)
+                .style("cursor", "pointer");
+
+            puntos.append("title")
+                .text(d =>
+                    `${d.Bebida} | ${d.tamano_vaso} | ${d.tipo_leche}: ` +
+                    `${Number(d["Sugars (g)"]).toFixed(1)} g de azúcar`
+                );
+
+            puntos.on("click", (event, d) => {
+                // Fijar primero la variante exacta y procesar una sola vez.
+                estadoActual.tamano = d.tamano_vaso;
+                estadoActual.leche = d.tipo_leche;
+                procesarSeleccion("bebida", d.Bebida);
+            });
+
+            const seleccion = estadoActual.datosFinales;
+            d3.select("#overview-detalle").text(
+                seleccion
+                    ? `${seleccion.Bebida} (${seleccion.tamano_vaso}, ` +
+                      `${seleccion.tipo_leche}): ` +
+                      `${Number(seleccion["Sugars (g)"]).toFixed(1)} g de azúcar`
+                    : "Selecciona una bebida para explorar sus datos."
+            );
         }
 
         function inicializarD3() {
@@ -586,7 +778,7 @@
                 .attr("fill", "rgba(255,255,255,0.08)");
 
             // Longitud de líneas reducida para no penetrar el panel derecho
-            const y25 = yTop + sugarScale(25);
+            const y25 = yBottom - alturaParaAzucar(25);
             svg.append("line").attr("class", "oms-line-25")
                 .attr("x1", xTopLeft - 30).attr("x2", xTopRight + 30)
                 .attr("y1", y25).attr("y2", y25);
@@ -595,7 +787,7 @@
                 .attr("x", xTopRight + 38).attr("y", y25 + 4)
                 .text("OMS IDEAL (25g)");
 
-            const y50 = yTop + sugarScale(50);
+            const y50 = yBottom - alturaParaAzucar(50);
             svg.append("line").attr("class", "oms-line-50")
                 .attr("x1", xTopLeft - 30).attr("x2", xTopRight + 30)
                 .attr("y1", y50).attr("y2", y50);
@@ -646,10 +838,10 @@
             const yTop = centerY - cupHeight / 2;
             const yBottom = centerY + cupHeight / 2;
 
-            const fillY = yTop + sugarScale(gramosAzucar);
-            const fillHeight = yBottom - fillY;
+            const fillHeight = alturaParaAzucar(gramosAzucar);
+            const fillY = yBottom - fillHeight;
 
-            const colorLiquido = d3.scaleLinear().domain([0, 50]).range(["#ffffff", "#ff4757"]).clamp(true);
+            const colorLiquido = d3.scaleLinear().domain([0, 50]).range(["#ffffff", "#00704A"]).clamp(true);
             const targetColor = colorLiquido(gramosAzucar);
 
             cupFill.transition().duration(1200).ease(d3.easeCubicOut)
