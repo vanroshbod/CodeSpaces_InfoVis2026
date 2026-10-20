@@ -20,6 +20,20 @@
             position: relative; 
         }
 
+        /* --- Aura roja perimetral reactiva al exceso sobre 50g --- */
+        #aura-peligro-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 50;
+            opacity: 0;
+            box-shadow: inset 0 0 0 0 rgba(250, 48, 72, 0);
+            transition: opacity 0.8s ease, box-shadow 0.8s ease;
+        }
+
         /* --- Panel de Controles (Sidebar) estilo Espresso Starbucks --- */
         #sidebar {
             width: 360px;
@@ -408,10 +422,9 @@
             filter: drop-shadow(0px 1px 3px rgba(0,0,0,0.9));
         }
         .oms-line-50 { 
-            stroke: #fa3048; /* Color línea LIMITE OMS 50gr */
+            stroke: #fa3048;
             stroke-width: 2.8; 
             stroke-dasharray: 6,4; 
-            /* filter: drop-shadow(0px 1px 3px rgba(0,0,0,0.85)); */
         }
         .terron { fill: #fff; opacity: 0.9; rx: 4; ry: 4; }
 
@@ -498,6 +511,9 @@
     </style>
 </head>
 <body>
+
+    <!-- CAPA DEL AURA ROJA REACTIVA PERIMETRAL -->
+    <div id="aura-peligro-overlay"></div>
 
     <!-- MODAL / CARD INFORMATIVA -->
     <div id="modal-overlay">
@@ -958,7 +974,6 @@
                 return estadoActual.datosFinales && d.Bebida === estadoActual.datosFinales.Bebida;
             };
 
-            // Escala monocromática idéntica a la del líquido del vaso (Blanco -> Rojo)
             const colorEscalaAzucar = d3.scaleLinear()
                 .domain([0, 50])
                 .range(["#ffffff", "#ff4757"])
@@ -1196,7 +1211,6 @@
             const gramosAzucar = Number(datos['Sugars (g)']) || 0;
             const calorias = Number(datos['Calories (Cal)']) || 0;
 
-            // 1. Canal de Calorías: Duración proporcional a las Calorías (0 - 500 Cal)
             if (energyPlayer.loaded) {
                 energyPlayer.stop();
                 energyPlayer.playbackRate = 1.0; 
@@ -1210,7 +1224,6 @@
                 energyPlayer.start(Tone.now(), 0, duracionEnergia);
             }
 
-            // 2. Canal de Azúcar: Duración proporcional a los Gramos (0 - 80 g)
             if (sugarPlayer.loaded && gramosAzucar > 0) {
                 sugarPlayer.stop();
                 sugarPlayer.playbackRate = 1.0; 
@@ -1267,8 +1280,30 @@
             
             document.getElementById('pct-impacto').innerText = `${Math.round(pctOms)}% del límite diario`;
             
+            // ========================================================
+            // AURA ROJA PERIMETRAL PROGRESIVA SEGÚN EXCESO SOBRE 50g
+            // ========================================================
+            const auraOverlay = document.getElementById('aura-peligro-overlay');
+            if (gramosAzucar >= 50) {
+                // Escala de intensidad: de 50g a 90g (peor caso)
+                const excesoPct = Math.min(Math.max((gramosAzucar - 50) / 40, 0), 1);
+                
+                // Opacidad: de 0.35 a 0.85
+                const opacidadAura = 0.35 + (excesoPct * 0.50);
+                // Extensión del desenfoque interior (blur): de 40px a 115px
+                const blurAura = Math.round(40 + (excesoPct * 75));
+                // Expansión interior (spread): de 15px a 50px
+                const spreadAura = Math.round(15 + (excesoPct * 35));
+
+                auraOverlay.style.boxShadow = `inset 0 0 ${blurAura}px ${spreadAura}px rgba(250, 48, 72, ${opacidadAura})`;
+                auraOverlay.style.opacity = 1;
+            } else {
+                auraOverlay.style.opacity = 0;
+                auraOverlay.style.boxShadow = `inset 0 0 0 0 rgba(250, 48, 72, 0)`;
+            }
+
             const alertaOms = document.getElementById('alerta-oms');
-            if (gramosAzucar > 50) {
+            if (gramosAzucar >= 50) {
                 alertaOms.style.display = 'block';
                 alertaOms.className = 'alerta-oms alerta-peligro';
                 alertaOms.innerText = '⚠️ Supera el límite diario de la OMS (50g).';
