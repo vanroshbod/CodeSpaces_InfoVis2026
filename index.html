@@ -538,8 +538,9 @@
             </ul>
 
             <div class="modal-nav-group">
-                <a href="entrega_iter_1.html" class="btn-modal-nav">📊 1° Entrega (Universo Completo)</a>
-                <a href="it2.html" class="btn-modal-nav">🎢 Idea 2 (Metabolismo)</a>
+                <a href="V1.html" class="btn-modal-nav">Entrega 1</a>
+                <a href="V2.html" class="btn-modal-nav">Entrega 2</a>
+                <a href="V3.html" class="btn-modal-nav">Entrega 3</a>
             </div>
 
             <button id="btn-modal-ok">Genial!</button>
@@ -1281,19 +1282,15 @@
             document.getElementById('pct-impacto').innerText = `${Math.round(pctOms)}% del límite diario`;
             
             // ========================================================
-            // AURA ROJA PERIMETRAL PROGRESIVA SEGÚN EXCESO SOBRE 50g
+            // AURA ROJA PERIMETRAL MENOS INVASIVA (BORDE SUTIL)
             // ========================================================
             const auraOverlay = document.getElementById('aura-peligro-overlay');
             if (gramosAzucar >= 50) {
-                // Escala de intensidad: de 50g a 90g (peor caso)
                 const excesoPct = Math.min(Math.max((gramosAzucar - 50) / 40, 0), 1);
                 
-                // Opacidad: de 0.35 a 0.85
-                const opacidadAura = 0.35 + (excesoPct * 0.50);
-                // Extensión del desenfoque interior (blur): de 40px a 115px
-                const blurAura = Math.round(40 + (excesoPct * 75));
-                // Expansión interior (spread): de 15px a 50px
-                const spreadAura = Math.round(15 + (excesoPct * 35));
+                const opacidadAura = 0.20 + (excesoPct * 0.35);
+                const blurAura = Math.round(20 + (excesoPct * 40));
+                const spreadAura = Math.round(5 + (excesoPct * 15));
 
                 auraOverlay.style.boxShadow = `inset 0 0 ${blurAura}px ${spreadAura}px rgba(250, 48, 72, ${opacidadAura})`;
                 auraOverlay.style.opacity = 1;
