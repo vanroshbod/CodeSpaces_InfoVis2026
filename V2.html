@@ -19,37 +19,151 @@
             flex: 0 0 320px; 
             background-color: #1a1a1a; padding: 20px;
             box-shadow: 4px 0 15px rgba(0,0,0,0.5); overflow-y: auto; z-index: 10;
-            display: flex;
+            display: flex; /* Siempre visible */
             flex-direction: column;
-            scrollbar-width: thin;
-            scrollbar-color: #555 #1a1a1a;
         }
-
-        #sidebar::-webkit-scrollbar { width: 10px; }
-        #sidebar::-webkit-scrollbar-track { background: #1a1a1a; border-left: 1px solid #282828; }
-        #sidebar::-webkit-scrollbar-thumb { background-color: #555; border-radius: 6px; border: 2px solid #1a1a1a; }
-        #sidebar::-webkit-scrollbar-thumb:hover { background-color: #777; }
         
         #viz-container { flex: 1; position: relative; overflow: hidden; cursor: default; }
 
-        /* Botón de retroceso al index principal */
-        .btn-volver-index { 
-            display: block; 
-            text-decoration: none; 
+        /* Ocultamos los botones de abrir y cerrar menú */
+        #btn-open-sidebar, .sidebar-header {
+            display: none !important;
+        }
+
+        /* Botón flotante de Información (i) en la esquina superior derecha */
+        #btn-info-modal {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 25;
+            background-color: #222;
+            color: #00d2ff;
+            border: 1px solid #00d2ff;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2em;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+            transition: all 0.2s;
+        }
+        #btn-info-modal:hover {
+            background-color: #00d2ff;
+            color: #000;
+            transform: scale(1.08);
+        }
+
+        /* --- Ventana Modal / Card Informativa (Oculta por defecto) --- */
+        #modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
             box-sizing: border-box;
-            margin-bottom: 15px; 
-            padding: 10px; 
-            background-color: #00d2ff; 
-            color: #000; 
-            font-weight: bold; 
-            text-align: center;
-            border: none; 
-            border-radius: 6px; 
-            cursor: pointer; 
-            transition: background 0.2s, transform 0.1s;
+        }
+        #modal-card {
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+            border: 1px solid #333;
+            border-radius: 10px;
+            max-width: 780px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            box-sizing: border-box;
+            position: relative;
+        }
+        #modal-card h1 {
+            color: #fff;
+            font-size: 1.5em;
+            margin-top: 0;
+            border-bottom: 2px solid #00d2ff;
+            padding-bottom: 8px;
+        }
+        #modal-card h2 {
+            color: #00d2ff;
+            font-size: 1.2em;
+            margin-top: 20px;
+        }
+        #modal-card p {
+            line-height: 1.6;
+            color: #ccc;
             font-size: 0.95em;
         }
-        .btn-volver-index:hover { background-color: #00a8cc; }
+        #modal-card a {
+            color: #00d2ff;
+            text-decoration: none;
+        }
+        #modal-card a:hover {
+            text-decoration: underline;
+        }
+        .modal-imagen {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 1.5rem auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        /* Contenedor de botones de navegación dentro del modal */
+        .modal-nav-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 25px;
+        }
+        .btn-modal-nav {
+            flex: 1;
+            padding: 12px;
+            background-color: #222;
+            color: #00d2ff;
+            border: 1px solid #00d2ff;
+            border-radius: 6px;
+            text-align: center;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 0.95em;
+            transition: all 0.2s;
+            box-sizing: border-box;
+            display: inline-block;
+        }
+        .btn-modal-nav:hover {
+            background-color: #00d2ff;
+            color: #000;
+        }
+
+        #btn-modal-ok {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #00d2ff;
+            color: #000;
+            font-size: 1em;
+            font-weight: bold;
+            text-align: center;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 12px;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        #btn-modal-ok:hover {
+            background-color: #00a8cc;
+        }
 
         /* --- Vistas del Sidebar --- */
         .sidebar-view { display: none; flex-direction: column; height: 100%; }
@@ -67,6 +181,30 @@
         .btn-toggle:hover { background-color: #333; color: #fff; }
         .btn-toggle.active { background-color: #00d2ff; color: #000; font-weight: bold; border-color: #00d2ff; }
 
+        /* Dropdown custom */
+        .custom-select {
+            padding: 8px; background-color: #222; color: #fff; border: 1px solid #444; 
+            border-radius: 4px; font-size: 0.85em; outline: none; width: 100%;
+            transition: border-color 0.2s;
+        }
+        .custom-select:focus { border-color: #00d2ff; }
+
+        /* Leyendas Interactivas */
+        .legend-item, .size-item {
+            display: flex; align-items: center; margin-bottom: 8px;
+            cursor: pointer; padding: 5px; border-radius: 5px; transition: background 0.2s;
+        }
+        .legend-item:hover, .size-item:hover { background-color: #333; }
+        .size-item.disabled { cursor: not-allowed; opacity: 0.5; }
+        .size-item.disabled:hover { background-color: transparent; }
+        
+        .color-box { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; flex-shrink: 0; }
+        .legend-text, .size-text { font-size: 0.8em; line-height: 1.2;}
+        
+        .size-legend { margin-top: 15px; padding-top: 15px; border-top: 1px solid #333; }
+        .size-legend-title { font-size: 0.9em; color: #ccc; margin-bottom: 10px; font-weight: bold;}
+        .size-circle { border: 1px solid #888; border-radius: 50%; background: none; margin-right: 15px; }
+
         /* Detalles Nutricionales (Ficha) */
         .ficha-header { background-color: #222; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 5px solid #444; }
         .ficha-titulo { color: #00d2ff; font-weight: bold; font-size: 1.1em; margin-bottom: 5px; }
@@ -75,6 +213,14 @@
         .nutrition-table { width: 100%; border-collapse: collapse; font-size: 0.85em; }
         .nutrition-table th { text-align: left; padding: 8px; border-bottom: 1px solid #444; color: #aaa; }
         .nutrition-table td { text-align: right; padding: 8px; border-bottom: 1px solid #333; font-weight: bold; }
+        
+        /* Botón de volver */
+        .btn-volver { 
+            display: block; text-decoration: none; box-sizing: border-box;
+            margin-bottom: 15px; padding: 10px; background-color: #00d2ff; color: #000; font-weight: bold; text-align: center;
+            border: none; border-radius: 5px; cursor: pointer; transition: background 0.2s;
+        }
+        .btn-volver:hover { background-color: #00a8cc; }
 
         /* --- Tooltip D3 --- */
         .tooltip {
@@ -90,6 +236,7 @@
         /* --- Ejes y Títulos D3 --- */
         svg text { font-family: sans-serif; }
         .chart-title { fill: #ffffff; font-size: 16px; font-weight: bold; letter-spacing: 0.5px; }
+
         .axis-label { fill: #ffffff !important; font-size: 12px; font-weight: bold; }
         .x-axis path.domain, .y-axis path.domain,
         .x-axis .tick line, .y-axis .tick line { 
@@ -107,23 +254,69 @@
 
         /* --- Animación de Ondas en el Peor Caso --- */
         @keyframes onda-radar {
-            0% { r: 18px; opacity: 0.9; stroke-width: 2.5px; }
-            100% { r: 45px; opacity: 0; stroke-width: 0.5px; }
+            0% {
+                r: 18px;
+                opacity: 0.9;
+                stroke-width: 2.5px;
+            }
+            100% {
+                r: 45px;
+                opacity: 0;
+                stroke-width: 0.5px;
+            }
         }
         .onda-animada {
-            fill: none; stroke: #ff4757; transform-origin: center;
-            animation: onda-radar 2.2s infinite ease-out; pointer-events: none;
+            fill: none;
+            stroke: #ff4757;
+            transform-origin: center;
+            animation: onda-radar 2.2s infinite ease-out;
+            pointer-events: none;
         }
-        .onda-animada-2 { animation-delay: 1.1s; }
-        .annotation-group text, .annotation-group line { pointer-events: none; }
+        .onda-animada-2 {
+            animation-delay: 1.1s;
+        }
+        .annotation-group text, .annotation-group line {
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
 
+    <!-- MODAL / CARD INFORMATIVA (OCULTA POR DEFECTO) -->
+    <div id="modal-overlay">
+        <div id="modal-card">
+            <h1>Proyecto de Visualización Nutricional de Bebidas de Starbucks</h1>
+            <p><strong>Visualización de Información (IIC2026)</strong></p>
+
+            <h2>Sobre el Proyecto</h2>
+            <p>Esta visualización representa las proporciones nutricionales y concentraciones de azúcares presentes en las diferentes bebidas de la cafetería Starbucks de manera interactiva y accesible.</p>
+            
+            <img src="data/starbucks_principal.jpg" alt="Visualización Nutricional Starbucks" class="modal-imagen">
+
+            <h2>Estructura y Dimensiones</h2>
+            <p>El gráfico de burbujas proyecta las concentraciones de azúcar respecto al eje vertical y permite analizar múltiples métricas nutricionales en el eje horizontal (Calorías, Proteínas, Grasas Totales y Cafeína).</p>
+            <p>Fuente de datos: <a href="https://www.kaggle.com/datasets/ashishpatel26/starbucks_drinkmenu_expanded/data" target="_blank" rel="noopener noreferrer">Starbucks Drink Menu Dataset (Kaggle)</a>.</p>
+
+            <h2>Desarrollado por:</h2>
+            <ul style="color: #ccc; line-height: 1.8;">
+                <li>Camila Matamala</li>
+                <li>Fernanda Oyarzún</li>
+                <li>Octavia Robledo</li>
+            </ul>
+
+            <!-- BOTONES DE NAVEGACIÓN A IDEA 1 E IDEA 2 -->
+            <div class="modal-nav-group">
+                <a href="it1.html" class="btn-modal-nav">💡 Idea 1</a>
+                <a href="it2.html" class="btn-modal-nav">💡 Idea 2</a>
+            </div>
+
+            <!-- BOTÓN GENIAL! -->
+            <button id="btn-modal-ok">Genial!</button>
+        </div>
+    </div>
+
     <div id="dashboard">
         <div id="sidebar">
-            <a href="index.html" class="btn-volver-index">← Volver al Inicio</a>
-
             <div id="vista-leyenda" class="sidebar-view active">
                 <h2>Explorador</h2>
                 
@@ -145,8 +338,8 @@
                 </div>
                 <div id="legend-container"></div>
                 
-                <div class="size-legend" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #333;">
-                    <div style="font-size: 0.9em; color: #ccc; margin-bottom: 10px; font-weight: bold;">Tamaño de Vaso</div>
+                <div class="size-legend">
+                    <div class="size-legend-title">Tamaño de Vaso</div>
                     <div id="size-legend-container"></div>
                 </div>
             </div>
@@ -161,11 +354,36 @@
         </div>
         
         <div id="viz-container">
+            <button id="btn-info-modal" title="Información del Proyecto">i</button>
             <div id="tooltip" class="tooltip"></div>
         </div>
     </div>
 
     <script>
+        // CONTROL DE VENTANA MODAL (POP-UP INFORMATIVO)
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalCard = document.getElementById('modal-card');
+        const btnModalOk = document.getElementById('btn-modal-ok');
+        const btnInfoModal = document.getElementById('btn-info-modal');
+
+        btnModalOk.addEventListener('click', (event) => {
+            event.stopPropagation();
+            modalOverlay.style.display = 'none';
+        });
+
+        btnInfoModal.addEventListener('click', (event) => {
+            event.stopPropagation();
+            modalOverlay.style.display = 'flex';
+        });
+
+        modalCard.addEventListener('click', (event) => {
+            event.stopPropagation();
+        });
+
+        modalOverlay.addEventListener('click', () => {
+            modalOverlay.style.display = 'none';
+        });
+
         // VARIABLES GLOBALES
         let datosOriginales = [];
         let datosPromedios = [];
@@ -193,10 +411,36 @@
             { nombre: "Venti", ml: 591 }
         ];
 
-        // REPRODUCTORES DE AUDIO TONE.JS
-        const glupPlayer = new Tone.Player({ url: "data/glup_glup_sound.wav", autostart: false, fadeOut: 0.1 }).toDestination();
-        const sugarPlayer = new Tone.Player({ url: "data/sugar_sound.wav", autostart: false, fadeOut: 0.1 }).toDestination();
+        // ==========================================
+        // CARGA DE AUDIOS REALES (TONE.PLAYER)
+        // ==========================================
+        const glupPlayer = new Tone.Player({
+            url: "data/glup_glup_sound.wav",
+            autostart: false,
+            fadeOut: 0.1
+        }).toDestination();
 
+        const sugarPlayer = new Tone.Player({
+            url: "data/sugar_sound.wav",
+            autostart: false,
+            fadeOut: 0.1
+        }).toDestination();
+
+        function toggleSidebar(open) {
+            instantRedraw = true;
+            const container = document.getElementById('viz-container');
+            const svg = d3.select("#viz-container svg");
+            if (!svg.empty()) {
+                svg.attr("width", container.clientWidth).attr("height", container.clientHeight);
+                dibujarVisualizacion(modoVista === 'todas' ? datosOriginales : datosPromedios);
+                document.dispatchEvent(new CustomEvent('actualizarViz'));
+            }
+            instantRedraw = false;
+        }
+
+        // ==========================================
+        // COLOR MONOCROMÁTICO ROJO EN DEGRADÉ
+        // ==========================================
         function getColor(d) {
             const getAzucarVal = item => metricaAzucar === 'pct' ? Number(item.azucar_pct) || 0 : Number(item['Sugars (g)']) || 0;
             const maxValX = d3.max(datosOriginales, item => Number(item['Calories (Cal)']) || 0) || 500;
@@ -219,7 +463,7 @@
             const cucharaditas = (gramosAzucar / 4).toFixed(1);
 
             const cont = document.getElementById('detalle-contenido');
-            cont.innerHTML = `
+            let htmlFicha = `
                 <div class="ficha-header" style="border-left-color: ${colorFondo}">
                     <div class="ficha-titulo">${datosBebida.Bebida}</div>
                     <div class="ficha-prep" style="color: ${colorFondo}; font-weight: bold;">Leche: ${datosBebida.tipo_leche}</div>
@@ -238,6 +482,7 @@
                     </tbody>
                 </table>
             `;
+            cont.innerHTML = htmlFicha;
         }
 
         function salirFoco() {
@@ -248,8 +493,15 @@
             document.dispatchEvent(new CustomEvent('actualizarViz'));
         }
 
-        document.getElementById('sidebar').addEventListener('click', e => e.stopPropagation());
-        window.addEventListener('click', () => { if (bebidaEnFoco) salirFoco(); });
+        document.getElementById('sidebar').addEventListener('click', function(event) {
+            event.stopPropagation();
+        });
+
+        window.addEventListener('click', function() {
+            if (bebidaEnFoco) {
+                salirFoco();
+            }
+        });
 
         function generarPromedios(data) {
             const agrupados = d3.group(data, d => d.Bebida + "|" + d.tipo_leche);
@@ -275,15 +527,19 @@
             return promedios;
         }
 
+        // CARGA DIRECTA DEL ARCHIVO JSON
         fetch('data/data_starbucks_detallado.json')
-            .then(res => res.json())
+            .then(response => {
+                if (!response.ok) throw new Error('Error al cargar data/data_starbucks_detallado.json');
+                return response.json();
+            })
             .then(data => {
                 data.forEach(d => {
                     let leche = d.tamano_preparacion_bebida.replace(d.tamano_vaso, '').trim();
                     d.tipo_leche = leche !== "" ? leche : "Estándar / Sin Leche";
                     d['Sugars (g)'] = d['Sugars (g)'] !== undefined ? d['Sugars (g)'] : (d.azucar_pct * d.volumen_ml / 100);
                 });
-
+                
                 datosOriginales = data.filter(d => d.Bebida && d.Categoria_bebida);
                 datosPromedios = generarPromedios(datosOriginales);
                 
@@ -291,12 +547,15 @@
                 const svg = d3.select("#viz-container").append("svg")
                     .attr("width", container.clientWidth).attr("height", container.clientHeight);
                 
+                // DEFINICIÓN DE MARCADOR DE FLECHA (ARROWHEAD)
                 const defs = svg.append("defs");
                 defs.append("marker")
                     .attr("id", "arrowhead")
                     .attr("viewBox", "0 -5 10 10")
-                    .attr("refX", 8).attr("refY", 0)
-                    .attr("markerWidth", 6).attr("markerHeight", 6)
+                    .attr("refX", 8)
+                    .attr("refY", 0)
+                    .attr("markerWidth", 6)
+                    .attr("markerHeight", 6)
                     .attr("orient", "auto")
                     .append("path")
                     .attr("d", "M0,-5L10,0L0,5")
@@ -313,8 +572,12 @@
 
                 dibujarVisualizacion(modoVista === 'todas' ? datosOriginales : datosPromedios);
             })
-            .catch(error => console.error("Error al cargar datos:", error));
+            .catch(error => {
+                console.error("ERROR DETALLADO:", error);
+                alert("Error al cargar datos:\n" + error.message);
+            });
 
+        // EVENTOS DE BOTONES
         function reDibujar() { dibujarVisualizacion(modoVista === 'todas' ? datosOriginales : datosPromedios); }
 
         d3.select("#btn-vista-todas").on("click", function() {
@@ -342,6 +605,7 @@
             reDibujar();
         });
 
+        // MOTOR PRINCIPAL DE VISUALIZACIÓN
         function dibujarVisualizacion(data) {
             const container = document.getElementById('viz-container');
             const width = container.clientWidth;
@@ -349,6 +613,7 @@
             const margin = { top: 60, right: 80, bottom: 60, left: 70 };
 
             const svg = d3.select("#viz-container svg").attr("width", width).attr("height", height);
+
             const tDuration = instantRedraw ? 0 : 800;
             const tDurationShort = instantRedraw ? 0 : 500;
             const tDurationExit = instantRedraw ? 0 : 300;
@@ -362,12 +627,16 @@
                 return coincideTexto && coincideCat && coincideTam;
             }
 
+            // 1. TÍTULO GENERAL DEL GRÁFICO
             svg.select(".chart-title")
                 .transition().duration(tDurationShort)
-                .attr("x", width / 2).attr("y", 30).attr("text-anchor", "middle")
+                .attr("x", width / 2)
+                .attr("y", 30)
+                .attr("text-anchor", "middle")
                 .text(`Índices de azúcar en bebidas Starbucks respecto a ${nombresVariables[variableX]}`);
 
             svg.selectAll(".story-text").remove();
+            
             let exceden = 0, totalVisible = 0;
             data.forEach(d => {
                 if (esVisible(d)) {
@@ -380,10 +649,18 @@
                 ? (pctExceden > 0 ? `⚠️ El ${pctExceden}% de las bebidas mostradas (${exceden}) superan el límite máximo diario de azúcar (50g)` : `✅ Ninguna de las bebidas mostradas supera el límite máximo de la OMS`)
                 : `🔍 Mostrando porcentaje de concentración de azúcar por cada 100ml.`;
 
-            svg.append("text").attr("class", "story-text")
-                .attr("x", width / 2).attr("y", 50).attr("text-anchor", "middle")
-                .style("fill", "#00d2ff").style("font-size", "13px").style("font-style", "italic").style("opacity", 0)
-                .text(subtitleText).transition().duration(800).style("opacity", 1);
+            svg.append("text")
+                .attr("class", "story-text")
+                .attr("x", width / 2)
+                .attr("y", 50)
+                .attr("text-anchor", "middle")
+                .style("fill", "#00d2ff")
+                .style("font-size", "13px")
+                .style("font-style", "italic")
+                .style("opacity", 0)
+                .text(subtitleText)
+                .transition().duration(800)
+                .style("opacity", 1);
 
             data.sort((a, b) => (b.volumen_ml || 0) - (a.volumen_ml || 0));
 
@@ -395,32 +672,68 @@
             const yScale = d3.scaleLinear().domain([-2, maxValY * 1.05]).range([height - margin.bottom, margin.top]);
             const sizeScale = d3.scalePow().exponent(1.5).domain([30, 591]).range([8, 20]); 
             
+            // ==========================================
+            // ESCALAS DE SONIDO SINCRONIZADAS
+            // ==========================================
             const duracionCompartida = 2.5;
-            const calVolumeScale = d3.scaleLinear().domain([5, maxValX || 110]).range([-10, 10]).clamp(true);
-            const sugarVolumeScale = d3.scaleLinear().domain([0, maxAzucarPct || 20]).range([-18, 2]).clamp(true);
 
+            const calVolumeScale = d3.scaleLinear()
+                .domain([5, maxValX || 110])
+                .range([-10, 10])
+                .clamp(true);
+
+            const sugarVolumeScale = d3.scaleLinear()
+                .domain([0, maxAzucarPct || 20])
+                .range([-18, 2])
+                .clamp(true);
+
+            // EJES
             const yAxisFormat = metricaAzucar === 'pct' ? "%" : "g";
             const xAxis = d3.axisBottom(xScale).tickFormat(d => d);
             const yAxis = d3.axisLeft(yScale).tickFormat(d => d + yAxisFormat);
 
             const gX = svg.select(".x-axis");
-            gX.transition().duration(tDuration).attr("transform", `translate(0,${height - margin.bottom})`).call(xAxis);
-            gX.selectAll("text").style("fill", "#ffffff").style("font-size", "11px").style("font-weight", "500");
-            gX.selectAll("line, path").style("stroke", "#ffffff").style("stroke-opacity", "0.6");
+            gX.transition().duration(tDuration)
+                .attr("transform", `translate(0,${height - margin.bottom})`)
+                .call(xAxis);
+
+            gX.selectAll("text")
+                .style("fill", "#ffffff")
+                .style("font-size", "11px")
+                .style("font-weight", "500");
+
+            gX.selectAll("line, path")
+                .style("stroke", "#ffffff")
+                .style("stroke-opacity", "0.6");
 
             const gY = svg.select(".y-axis");
-            gY.transition().duration(tDuration).attr("transform", `translate(${margin.left},0)`).call(yAxis);
-            gY.selectAll("text").style("fill", "#ffffff").style("font-size", "11px").style("font-weight", "500");
-            gY.selectAll("line, path").style("stroke", "#ffffff").style("stroke-opacity", "0.6");
+            gY.transition().duration(tDuration)
+                .attr("transform", `translate(${margin.left},0)`)
+                .call(yAxis);
+
+            gY.selectAll("text")
+                .style("fill", "#ffffff")
+                .style("font-size", "11px")
+                .style("font-weight", "500");
+
+            gY.selectAll("line, path")
+                .style("stroke", "#ffffff")
+                .style("stroke-opacity", "0.6");
 
             svg.select(".x-axis-label").transition().duration(tDuration)
-                .attr("x", width / 2).attr("y", height - 20).style("text-anchor", "middle").style("fill", "#ffffff").text(nombresVariables[variableX]);
+                .attr("x", width / 2).attr("y", height - 20)
+                .style("text-anchor", "middle")
+                .style("fill", "#ffffff")
+                .text(nombresVariables[variableX]);
             
             const yAxisTitle = metricaAzucar === 'pct' ? "Concentración de Azúcar (g/100ml)" : "Azúcar Total (gramos)";
             svg.select(".y-axis-label").transition().duration(tDuration)
-                .attr("transform", "rotate(-90)").attr("x", -height / 2).attr("y", 20).style("text-anchor", "middle").style("fill", "#ffffff").text(yAxisTitle);
+                .attr("transform", "rotate(-90)").attr("x", -height / 2).attr("y", 20)
+                .style("text-anchor", "middle")
+                .style("fill", "#ffffff")
+                .text(yAxisTitle);
 
-            // LÍNEAS DE LA OMS
+            // LÍNEAS DE LA OMS 
             const whoGroup = svg.select(".who-group");
             whoGroup.selectAll("*").remove();
             
@@ -431,12 +744,16 @@
                 whoGroup.append("text").attr("class", "who-label text-50").attr("fill", "#ff4757").text("OMS Límite (50g)");
 
                 whoGroup.transition().duration(tDuration).style("opacity", 1);
+                
                 whoGroup.select(".line-25").transition().duration(tDuration)
-                    .attr("x1", margin.left).attr("x2", width - margin.right).attr("y1", yScale(25)).attr("y2", yScale(25));
+                    .attr("x1", margin.left).attr("x2", width - margin.right)
+                    .attr("y1", yScale(25)).attr("y2", yScale(25));
                 whoGroup.select(".text-25").transition().duration(tDuration)
                     .attr("x", width - margin.right - 10).attr("y", yScale(25) - 5).style("text-anchor", "end");
+                
                 whoGroup.select(".line-50").transition().duration(tDuration)
-                    .attr("x1", margin.left).attr("x2", width - margin.right).attr("y1", yScale(50)).attr("y2", yScale(50));
+                    .attr("x1", margin.left).attr("x2", width - margin.right)
+                    .attr("y1", yScale(50)).attr("y2", yScale(50));
                 whoGroup.select(".text-50").transition().duration(tDuration)
                     .attr("x", width - margin.right - 10).attr("y", yScale(50) - 5).style("text-anchor", "end");
             } else {
@@ -497,7 +814,10 @@
                 })
                 .on("click", async function(event, d) {
                     event.stopPropagation();
-                    if (Tone.context.state !== 'running') await Tone.start();
+
+                    if (Tone.context.state !== 'running') {
+                        await Tone.start();
+                    }
 
                     const now = Tone.now();
                     const valX = Number(d[variableX]) || 0;
@@ -506,6 +826,7 @@
                     const volGlup = calVolumeScale(valX);
                     const volAzucar = sugarVolumeScale(azucar);
 
+                    // 1. REPRODUCIR SONIDO GLUP
                     if (glupPlayer.loaded) {
                         glupPlayer.stop();
                         glupPlayer.volume.value = volGlup;
@@ -513,6 +834,7 @@
                         glupPlayer.start(now, 0, duracionCompartida);
                     }
 
+                    // 2. REPRODUCIR SONIDO AZÚCAR
                     if (sugarPlayer.loaded) {
                         sugarPlayer.stop();
                         sugarPlayer.volume.value = volAzucar;
@@ -521,6 +843,8 @@
 
                     bebidaEnFoco = d.Bebida;
                     mostrarDetalle(d, getColor(d));
+                    
+                    toggleSidebar(true);
                 });
 
             const bubbles = bubblesEnter.merge(bubbleSelection);
@@ -532,7 +856,9 @@
 
             bubbleSelection.exit().transition().duration(tDurationExit).attr("r", 0).remove();
 
-            // ANOTACIÓN PEOR CASO (MÁXIMA COMBINACIÓN AZÚCAR + CALORÍAS)
+            // ========================================================
+            // ANOTACIÓN Y ONDAS DEL PEOR CASO
+            // ========================================================
             const annotationGroup = svg.select(".annotation-group");
             annotationGroup.selectAll("*").remove();
 
@@ -553,8 +879,15 @@
                     const targetY = yScale(getAzucar(maxItem) || 0);
                     const targetR = sizeScale(Number(maxItem.volumen_ml) || 473);
 
-                    annotationGroup.append("circle").attr("cx", targetX).attr("cy", targetY).attr("class", "onda-animada");
-                    annotationGroup.append("circle").attr("cx", targetX).attr("cy", targetY).attr("class", "onda-animada onda-animada-2");
+                    annotationGroup.append("circle")
+                        .attr("cx", targetX)
+                        .attr("cy", targetY)
+                        .attr("class", "onda-animada");
+
+                    annotationGroup.append("circle")
+                        .attr("cx", targetX)
+                        .attr("cy", targetY)
+                        .attr("class", "onda-animada onda-animada-2");
 
                     const textX = Math.max(margin.left + 10, targetX - 165);
                     const textY = Math.max(margin.top + 30, targetY - 60);
@@ -562,16 +895,30 @@
                     const nombreCorto = maxItem.Bebida.length > 25 ? maxItem.Bebida.substring(0, 25) + "..." : maxItem.Bebida;
                     const cucharaditasMax = (getAzucar(maxItem) / 4).toFixed(1);
 
-                    annotationGroup.append("text").attr("x", textX).attr("y", textY)
-                        .text(`¡${nombreCorto}!`).attr("fill", "#ff4757").style("font-weight", "bold").style("font-size", "14px");
+                    annotationGroup.append("text")
+                        .attr("x", textX)
+                        .attr("y", textY)
+                        .text(`¡${nombreCorto}!`)
+                        .attr("fill", "#ff4757")
+                        .style("font-weight", "bold")
+                        .style("font-size", "14px");
 
-                    annotationGroup.append("text").attr("x", textX).attr("y", textY + 18)
-                        .text(`Bomba de azúcar: ${cucharaditasMax} cucharaditas 🥄`).attr("fill", "#ffffff").style("font-size", "12px").style("opacity", "0.9");
+                    annotationGroup.append("text")
+                        .attr("x", textX)
+                        .attr("y", textY + 18)
+                        .text(`Bomba de azúcar: ${cucharaditasMax} cucharaditas 🥄`)
+                        .attr("fill", "#ffffff")
+                        .style("font-size", "12px")
+                        .style("opacity", "0.9");
 
                     annotationGroup.append("line")
-                        .attr("x1", textX + 65).attr("y1", textY + 28)
-                        .attr("x2", targetX - targetR * 0.4).attr("y2", targetY - targetR * 0.4)
-                        .attr("stroke", "#ff4757").attr("stroke-width", 2).attr("marker-end", "url(#arrowhead)");
+                        .attr("x1", textX + 65)
+                        .attr("y1", textY + 28)
+                        .attr("x2", targetX - targetR * 0.4)
+                        .attr("y2", targetY - targetR * 0.4)
+                        .attr("stroke", "#ff4757")
+                        .attr("stroke-width", 2)
+                        .attr("marker-end", "url(#arrowhead)");
                 }
             }
 
@@ -594,6 +941,7 @@
 
             document.addEventListener('actualizarViz', actualizarVistaFiltros);
 
+            // LEYENDA DEL DEGRADÉ MONOCROMÁTICO (Azúcar y Calorías)
             const legendContainer = d3.select("#legend-container");
             legendContainer.html(`
                 <div style="font-size: 0.85em; margin-bottom: 8px; color: #ccc;">
@@ -606,6 +954,7 @@
                 </div>
             `);
 
+            // LEYENDA TAMAÑOS
             const sizeLegendContainer = d3.select("#size-legend-container");
             sizeLegendContainer.html(""); 
             const maxDiametro = sizeScale(591) * 2; 
