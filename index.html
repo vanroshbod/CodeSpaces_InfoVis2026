@@ -153,7 +153,10 @@
             cursor: not-allowed; 
         }
 
-        .grid-opciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .grid-opciones {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px; }
 
         /* --- Panel de Visualización Central (#604c4c) --- */
         #viz-container { 
@@ -163,13 +166,13 @@
             background: radial-gradient(circle at center, #725b5b 0%, #604c4c 100%);
         }
 
-        /* Cabecera izquierda con alto contraste */
+        /* Cabecera izquierda ampliada horizontalmente */
         #viz-header { 
             position: absolute; 
             top: 25px; 
             left: 35px; 
+            right: 270px; 
             z-index: 20; 
-            max-width: 320px; 
             pointer-events: none;
         }
         .viz-title { 
@@ -178,6 +181,7 @@
             font-weight: 800; 
             margin: 0 0 8px 0; 
             line-height: 1.15; 
+            max-width: 340px; 
             text-shadow: 0 2px 8px rgba(0,0,0,0.4);
         }
         .viz-title span { 
@@ -185,16 +189,17 @@
         }
         .viz-subtitle { 
             color: #f3ede6; 
-            font-size: 0.92em; 
+            font-size: 1em; 
             line-height: 1.45; 
             margin: 0; 
+            max-width: 720px; 
             text-shadow: 0 1px 4px rgba(0,0,0,0.3);
         }
 
         /* Panel métricas de azúcar superior derecho */
         #metricas-panel {
             position: absolute; 
-            top: 25px; 
+            top: 50px; 
             right: 25px; 
             background: rgba(54, 36, 21, 0.94);
             padding: 16px 18px; 
@@ -207,22 +212,47 @@
             z-index: 20;
             box-sizing: border-box;
         }
-        .metrica-valor { font-size: 2.5em; font-weight: bold; margin: 6px 0; line-height: 1; }
-        .metrica-label { font-size: 0.78em; color: #f0e6dc; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+        .metrica-valor {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 6px 0;
+            line-height: 1; }
+        
+        .metrica-label {
+            font-size: 0.78em;
+            color: #f0e6dc;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
         
         .alerta-oms {
-            padding: 8px 10px; margin-top: 10px; font-size: 0.78em; display: none; font-weight: bold; border-radius: 4px; line-height: 1.3;
+            padding: 8px 10px;
+            margin-top: 10px;
+            font-size: 0.78em;
+            display: none;
+            font-weight: bold;
+            border-radius: 4px;
+            line-height: 1.3;
         }
-        .alerta-precaucion { background: rgba(255, 165, 2, 0.18); border-left: 4px solid #ffa502; color: #ffd27d; }
-        .alerta-peligro { background: rgba(255, 71, 87, 0.22); border-left: 4px solid #ff4757; color: #ff8b97; }
+        .alerta-precaucion {
+            background: rgba(255, 165, 2, 0.18);
+            border-left: 4px solid #ffa502;
+            color: #ffd27d;
+        }
+        .alerta-peligro {
+            background: rgba(255, 71, 87, 0.22);
+            border-left: 4px solid #ff4757;
+            color: #ff8b97;
+        }
 
         /* Mini Gráfico Overview ubicado a la IZQUIERDA del vaso */
         #overview-panel {
             position: absolute;
             left: 35px;
-            top: 175px;
+            top: 195px;
             width: 260px;
-            max-height: 42vh;
+            max-height: 45vh;
             overflow: hidden;
             box-sizing: border-box;
             padding: 14px 16px;
@@ -264,7 +294,7 @@
         #reloj-panel {
             position: absolute;
             right: 25px;
-            bottom: 75px;
+            bottom: 100px;
             width: 220px;
             background: rgba(54, 36, 21, 0.94);
             border: 1px solid rgba(234, 199, 132, 0.3);
@@ -357,6 +387,7 @@
             white-space: nowrap;
         }
 
+        /* Líneas y Etiquetas OMS */
         .oms-label-25 { 
             fill: #ffd074; 
             font-size: 10.5px; 
@@ -364,32 +395,40 @@
             letter-spacing: 0.5px; 
             filter: drop-shadow(0px 1px 3px rgba(0,0,0,0.8));
         }
-        .oms-line-25 { stroke: #ffa502; stroke-width: 2; stroke-dasharray: 5,4; }
+        .oms-line-25 {
+            stroke: #ffa502;
+            stroke-width: 2;
+            stroke-dasharray: 5,4; }
         
         .oms-label-50 { 
-            fill: #ff9aa4; 
+            fill: #fa3048;
             font-size: 10.5px; 
-            font-weight: bold; 
+            font-weight: 800; 
             letter-spacing: 0.5px; 
-            filter: drop-shadow(0px 1px 3px rgba(0,0,0,0.8));
+            filter: drop-shadow(0px 1px 3px rgba(0,0,0,0.9));
         }
-        .oms-line-50 { stroke: #ff4757; stroke-width: 2; stroke-dasharray: 5,4; }
+        .oms-line-50 { 
+            stroke: #fa3048; /* Color línea LIMITE OMS 50gr */
+            stroke-width: 2.8; 
+            stroke-dasharray: 6,4; 
+            /* filter: drop-shadow(0px 1px 3px rgba(0,0,0,0.85)); */
+        }
         .terron { fill: #fff; opacity: 0.9; rx: 4; ry: 4; }
 
         /* Botón flotante de Información (i) */
         #btn-info-modal {
             position: absolute;
-            top: 25px;
+            top: 8px;
             right: 20px;
             z-index: 25;
             background-color: #362415;
             color: #EAC784;
             border: 1px solid #EAC784;
-            width: 38px;
-            height: 38px;
+            width: 35px;
+            height: 35px;
             border-radius: 50%;
             cursor: pointer;
-            font-size: 1.15em;
+            font-size: 1.1em;
             font-weight: bold;
             display: flex;
             align-items: center;
@@ -407,8 +446,10 @@
         /* --- Ventana Modal Informativa --- */
         #modal-overlay {
             position: fixed;
-            top: 0; left: 0;
-            width: 100vw; height: 100vh;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
             background: rgba(0, 0, 0, 0.85);
             backdrop-filter: blur(5px);
             z-index: 1000;
@@ -520,7 +561,7 @@
 
         <div id="viz-header">
             <h1 class="viz-title">¿Cuánta azúcar <span>esconde tu vaso?</span></h1>
-            <p class="viz-subtitle">Observa cómo se llena tu bebida y descubre físicamente su impacto frente a los límites de la OMS.</p>
+            <p class="viz-subtitle">Observa cómo se llena tu bebida y descubre su impacto frente a los límites de la OMS.</p>
         </div>
 
         <!-- Panel métricas de azúcar superior derecho -->
@@ -580,10 +621,9 @@
         modalOverlay.addEventListener('click', () => modalOverlay.style.display = 'none');
 
         // ========================================================
-        // PROCESAMIENTO Y FILTRADO DE FRECUENCIAS (TONE.JS)
+        // FILTRADO DE FRECUENCIAS CON VOLUMEN ESTÁTICO (TONE.JS)
         // ========================================================
 
-        // 1. Canal de Azúcar: Agudos puros (> 3 kHz)
         const sugarHighpass = new Tone.Filter({
             frequency: 3000,
             type: "highpass",
@@ -592,10 +632,10 @@
 
         const sugarPlayer = new Tone.Player({
             url: "data/sugar_sound.wav",
-            autostart: false
+            autostart: false,
+            volume: -8
         }).connect(sugarHighpass);
 
-        // 2. Canal de Calorías: Banda de Medios y Graves (200 Hz a 1.5 kHz)
         const energyHighpass = new Tone.Filter({
             frequency: 200,
             type: "highpass",
@@ -612,7 +652,8 @@
 
         const energyPlayer = new Tone.Player({
             url: "data/energy_sound.wav",
-            autostart: false
+            autostart: false,
+            volume: -12
         }).connect(energyHighpass);
 
         let datosOriginales = [];
@@ -633,9 +674,6 @@
         let cupHeight = 340, cupWidthTop = 210, cupWidthBottom = 150;
         let gTerrones;
 
-        // ========================================================
-        // CÁLCULO DE ÁREA PROPORCIONAL EXACTA (LIE FACTOR = 1)
-        // ========================================================
         function alturaParaAzucar(gramos) {
             const H = cupHeight;
             const b = cupWidthBottom;
@@ -651,7 +689,6 @@
             return (-b + Math.sqrt(b * b + 4 * k * areaObjetivo)) / (2 * k);
         }
 
-        // Carga simultánea: Datos JSON + Buffers de Audio de Tone.js
         Promise.all([
             fetch('data/data_starbucks_detallado.json').then(res => res.json()),
             Tone.loaded()
@@ -697,7 +734,7 @@
                 reproducirSonidos(estadoActual.datosFinales);
                 sonidoInicialReproducido = true;
             } catch (e) {
-                // Autoplay en espera de primer gesto
+                // En espera de primera interacción de usuario
             }
         }
 
@@ -838,7 +875,7 @@
             });
         }
 
-        /* --- Mini Gráfico de Dispersión con Ejes Iluminados para Alto Contraste --- */
+        /* --- Mini Gráfico de Dispersión Overview --- */
         function renderizarOverview() {
             const contenedor = d3.select("#overview-grafico");
             contenedor.selectAll("*").remove();
@@ -886,7 +923,6 @@
                 .nice()
                 .range([alto - margen.bottom, margen.top]);
 
-            // Eje X con etiquetas en crema brillante
             svgOverview.append("g")
                 .attr("transform", `translate(0,${alto - margen.bottom})`)
                 .call(d3.axisBottom(x).ticks(4))
@@ -902,7 +938,6 @@
                 .attr("text-anchor", "middle")
                 .text("Promedio Azúcar (g)");
 
-            // Eje Y con etiquetas en crema brillante
             svgOverview.append("g")
                 .attr("transform", `translate(${margen.left},0)`)
                 .call(d3.axisLeft(y).ticks(4))
@@ -923,16 +958,22 @@
                 return estadoActual.datosFinales && d.Bebida === estadoActual.datosFinales.Bebida;
             };
 
+            // Escala monocromática idéntica a la del líquido del vaso (Blanco -> Rojo)
+            const colorEscalaAzucar = d3.scaleLinear()
+                .domain([0, 50])
+                .range(["#ffffff", "#ff4757"])
+                .clamp(true);
+
             const puntos = svgOverview.selectAll("circle")
                 .data(datos)
                 .join("circle")
                 .attr("cx", d => x(Number(d["Sugars (g)"])))
                 .attr("cy", d => y(Number(d["Calories (Cal)"])))
-                .attr("r", d => esSeleccionado(d) ? 4.8 : 2.5)
-                .attr("fill", d => esSeleccionado(d) ? "#EAC784" : "#4ade80")
-                .attr("stroke", d => esSeleccionado(d) ? "#fff" : "#0B421A")
-                .attr("stroke-width", d => esSeleccionado(d) ? 1.6 : 0.7)
-                .attr("opacity", d => esSeleccionado(d) ? 1 : 0.85)
+                .attr("r", d => esSeleccionado(d) ? 5.2 : 2.6)
+                .attr("fill", d => esSeleccionado(d) ? "#EAC784" : colorEscalaAzucar(Number(d["Sugars (g)"])))
+                .attr("stroke", d => esSeleccionado(d) ? "#ffffff" : "rgba(36, 22, 12, 0.7)")
+                .attr("stroke-width", d => esSeleccionado(d) ? 2 : 0.7)
+                .attr("opacity", d => esSeleccionado(d) ? 1 : 0.9)
                 .style("cursor", "pointer");
 
             puntos.append("title")
@@ -1064,7 +1105,7 @@
             }
         }
 
-        /* --- Inicialización del Vaso D3 con Líneas OMS resaltadas --- */
+        /* --- Inicialización del Vaso D3 con Líneas OMS --- */
         function inicializarD3() {
             d3.select("#vaso-svg").remove();
 
@@ -1104,7 +1145,6 @@
                 .attr("fill", "#ffffff")
                 .attr("clip-path", "url(#cup-clip)");
 
-            // Contorno blanco nítido del vaso
             svg.append("polygon")
                 .attr("points", polygonPoints)
                 .attr("fill", "none")
@@ -1112,12 +1152,10 @@
                 .attr("stroke-width", 3.8)
                 .attr("stroke-linejoin", "round");
                 
-            // Brillo lateral de cristal
             svg.append("polygon")
                 .attr("points", `${xTopLeft + 12},${yTop + 10} ${xTopLeft + 25},${yTop + 10} ${xBottomLeft + 25},${yBottom - 10} ${xBottomLeft + 12},${yBottom - 10}`)
                 .attr("fill", "rgba(255,255,255,0.12)");
 
-            // Líneas de advertencia OMS adaptadas al contraste
             const h25 = alturaParaAzucar(25);
             const y25 = yBottom - h25;
             svg.append("line").attr("class", "oms-line-25")
@@ -1149,40 +1187,41 @@
             actualizarRelojEnergetico();
         });
 
-        // REPRODUCCIÓN SONORA: Energía (Filtro 200Hz - 1.5kHz) + Azúcar (Filtro > 3kHz)
+        // =========================================================================
+        // REPRODUCCIÓN SONORA BASADA EXCLUSIVAMENTE EN DURACIÓN
+        // =========================================================================
         async function reproducirSonidos(datos) {
             if (Tone.context.state !== 'running') await Tone.start();
             
             const gramosAzucar = Number(datos['Sugars (g)']) || 0;
             const calorias = Number(datos['Calories (Cal)']) || 0;
 
+            // 1. Canal de Calorías: Duración proporcional a las Calorías (0 - 500 Cal)
             if (energyPlayer.loaded) {
                 energyPlayer.stop();
+                energyPlayer.playbackRate = 1.0; 
 
-                const escalaPitch = d3.scaleLinear()
+                const escalaDuracionEnergia = d3.scaleLinear()
                     .domain([0, 500])
-                    .range([0.75, 1.45])
+                    .range([0.15, 2.6])
                     .clamp(true);
 
-                const escalaVolumen = d3.scaleLinear()
-                    .domain([0, 500])
-                    .range([-26, -10])
-                    .clamp(true);
-
-                energyPlayer.playbackRate = escalaPitch(calorias);
-                energyPlayer.volume.value = escalaVolumen(calorias);
-                energyPlayer.start(Tone.now(), 0, 1.2);
+                const duracionEnergia = escalaDuracionEnergia(calorias);
+                energyPlayer.start(Tone.now(), 0, duracionEnergia);
             }
 
+            // 2. Canal de Azúcar: Duración proporcional a los Gramos (0 - 80 g)
             if (sugarPlayer.loaded && gramosAzucar > 0) {
-                const volSugar = d3.scaleLinear()
-                    .domain([0, 80])
-                    .range([-18, 0])
-                    .clamp(true)(gramosAzucar);
-
                 sugarPlayer.stop();
-                sugarPlayer.volume.value = volSugar;
-                sugarPlayer.start(Tone.now() + 0.25, 0, 2);
+                sugarPlayer.playbackRate = 1.0; 
+
+                const escalaDuracionAzucar = d3.scaleLinear()
+                    .domain([0, 80])
+                    .range([0.2, 3.2])
+                    .clamp(true);
+
+                const duracionAzucar = escalaDuracionAzucar(gramosAzucar);
+                sugarPlayer.start(Tone.now() + 0.15, 0, duracionAzucar);
             }
         }
 
