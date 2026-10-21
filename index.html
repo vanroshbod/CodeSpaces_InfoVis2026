@@ -170,7 +170,8 @@
         .grid-opciones {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px; }
+            gap: 8px; 
+        }
 
         /* --- Panel de Visualización Central (#604c4c) --- */
         #viz-container { 
@@ -230,7 +231,8 @@
             font-size: 2.5em;
             font-weight: bold;
             margin: 6px 0;
-            line-height: 1; }
+            line-height: 1; 
+        }
         
         .metrica-label {
             font-size: 0.78em;
@@ -412,7 +414,8 @@
         .oms-line-25 {
             stroke: #ffa502;
             stroke-width: 2;
-            stroke-dasharray: 5,4; }
+            stroke-dasharray: 5,4; 
+        }
         
         .oms-label-50 { 
             fill: #fa3048;
@@ -654,26 +657,18 @@
             volume: -8
         }).connect(sugarHighpass);
 
-        // 2. Canal de Calorías (Zancadas de Trote): Rango de impacto y fricción (60 Hz a 2.500 Hz)
-        const stepsHighpass = new Tone.Filter({
-            frequency: 60,
-            type: "highpass",
-            rolloff: -12
-        });
-
-        const stepsLowpass = new Tone.Filter({
-            frequency: 2500,
+        // 2. Canal de Calorías ("Glup-Glup"): Filtro pasa-bajos (750 Hz) para textura densa y viscosa
+        const glupLowpass = new Tone.Filter({
+            frequency: 750,
             type: "lowpass",
             rolloff: -12
         }).toDestination();
 
-        stepsHighpass.connect(stepsLowpass);
-
-        const energyPlayer = new Tone.Player({
-            url: "data/steps.wav",
+        const glupPlayer = new Tone.Player({
+            url: "data/glup_glup_sound.wav",
             autostart: false,
             volume: -4
-        }).connect(stepsHighpass);
+        }).connect(glupLowpass);
 
         let datosOriginales = [];
         let agrupadoPorBebida = {};
@@ -1207,7 +1202,7 @@
         });
 
         // =========================================================================
-        // REPRODUCCIÓN SONORA BASADA EN DURACIÓN (ZANCADAS DE TROTE Y TERRONES)
+        // REPRODUCCIÓN SONORA BASADA EN DURACIONES EQUIVALENTES (CALORÍAS Y AZÚCAR)
         // =========================================================================
         async function reproducirSonidos(datos) {
             if (Tone.context.state !== 'running') await Tone.start();
@@ -1215,35 +1210,42 @@
             const gramosAzucar = Number(datos['Sugars (g)']) || 0;
             const calorias = Number(datos['Calories (Cal)']) || 0;
 
-            // 1. Canal de Calorías (Zancadas de Trote): Duración proporcional a las Calorías (0 - 500 Cal)
-            if (energyPlayer.loaded) {
-                energyPlayer.stop();
-                energyPlayer.playbackRate = 1.0; 
+            // 1. Canal de Calorías ("Glup-Glup"):
+            // Si la bebida tiene 0 calorías, se detiene y NO emite sonido.
+            if (glupPlayer.loaded) {
+                glupPlayer.stop();
 
-                // Mapeo a duración:
-                // Bebida ligera (0 - 15 Cal / ~1 min trote): ~0.25 s (una sola pisada corta)
-                // Bebida pesada (450 - 500 Cal / ~50 min trote): hasta 2.8 s (zancadas continuas)
-                const escalaDuracionEnergia = d3.scaleLinear()
-                    .domain([0, 500])
-                    .range([0.25, 2.8])
-                    .clamp(true);
+                if (calorias > 0) {
+                    glupPlayer.playbackRate = 1.0; // Velocidad y tono constantes
 
-                const duracionEnergia = escalaDuracionEnergia(calorias);
-                energyPlayer.start(Tone.now(), 0, duracionEnergia);
+                    // Rango [1.6s - 4.0s] proporcional a Calorías
+                    const escalaDuracionCalorias = d3.scaleLinear()
+                        .domain([1, 500])
+                        .range([1.6, 4.0])
+                        .clamp(true);
+
+                    const duracionCalorias = escalaDuracionCalorias(calorias);
+                    glupPlayer.start(Tone.now(), 0, duracionCalorias);
+                }
             }
 
-            // 2. Canal de Azúcar (Terrones): Duración proporcional a los Gramos (0 - 80 g)
-            if (sugarPlayer.loaded && gramosAzucar > 0) {
+            // 2. Canal de Azúcar (Terrones):
+            // Si la bebida tiene 0g de azúcar, se detiene y NO emite sonido.
+            // Comparte el rango idéntico [1.6s - 4.0s] para igualar prominencia.
+            if (sugarPlayer.loaded) {
                 sugarPlayer.stop();
-                sugarPlayer.playbackRate = 1.0; 
 
-                const escalaDuracionAzucar = d3.scaleLinear()
-                    .domain([0, 80])
-                    .range([0.2, 3.2])
-                    .clamp(true);
+                if (gramosAzucar > 0) {
+                    sugarPlayer.playbackRate = 1.0; // Velocidad y tono constantes
 
-                const duracionAzucar = escalaDuracionAzucar(gramosAzucar);
-                sugarPlayer.start(Tone.now() + 0.15, 0, duracionAzucar);
+                    const escalaDuracionAzucar = d3.scaleLinear()
+                        .domain([1, 80])
+                        .range([1.6, 4.0])
+                        .clamp(true);
+
+                    const duracionAzucar = escalaDuracionAzucar(gramosAzucar);
+                    sugarPlayer.start(Tone.now() + 0.15, 0, duracionAzucar);
+                }
             }
         }
 
