@@ -983,10 +983,10 @@
                 .join("circle")
                 .attr("cx", d => x(Number(d["Sugars (g)"])))
                 .attr("cy", d => y(Number(d["Calories (Cal)"])))
-                .attr("r", d => esSeleccionado(d) ? 5.2 : 2.6)
+                .attr("r", d => esSeleccionado(d) ? 6.5 : 4.2)
                 .attr("fill", d => esSeleccionado(d) ? "#EAC784" : colorEscalaAzucar(Number(d["Sugars (g)"])))
-                .attr("stroke", d => esSeleccionado(d) ? "#ffffff" : "rgba(36, 22, 12, 0.7)")
-                .attr("stroke-width", d => esSeleccionado(d) ? 2 : 0.7)
+                .attr("stroke", d => esSeleccionado(d) ? "#ffffff" : "rgba(36, 22, 12, 0.75)")
+                .attr("stroke-width", d => esSeleccionado(d) ? 2.2 : 1.0)
                 .attr("opacity", d => esSeleccionado(d) ? 1 : 0.9)
                 .style("cursor", "pointer");
 
