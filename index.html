@@ -638,9 +638,10 @@
         modalOverlay.addEventListener('click', () => modalOverlay.style.display = 'none');
 
         // ========================================================
-        // FILTRADO DE FRECUENCIAS CON VOLUMEN ESTÁTICO (TONE.JS)
+        // FILTRADO DE FRECUENCIAS Y SONIFICACIÓN (TONE.JS)
         // ========================================================
 
+        // 1. Canal de Azúcar: Agudos puros (> 3 kHz), volumen fijo normalizado
         const sugarHighpass = new Tone.Filter({
             frequency: 3000,
             type: "highpass",
@@ -653,25 +654,26 @@
             volume: -8
         }).connect(sugarHighpass);
 
-        const energyHighpass = new Tone.Filter({
-            frequency: 200,
+        // 2. Canal de Calorías (Zancadas de Trote): Rango de impacto y fricción (60 Hz a 2.500 Hz)
+        const stepsHighpass = new Tone.Filter({
+            frequency: 60,
             type: "highpass",
             rolloff: -12
         });
 
-        const energyLowpass = new Tone.Filter({
-            frequency: 1500,
+        const stepsLowpass = new Tone.Filter({
+            frequency: 2500,
             type: "lowpass",
             rolloff: -12
         }).toDestination();
 
-        energyHighpass.connect(energyLowpass);
+        stepsHighpass.connect(stepsLowpass);
 
         const energyPlayer = new Tone.Player({
-            url: "data/energy_sound.wav",
+            url: "data/steps.wav",
             autostart: false,
-            volume: -12
-        }).connect(energyHighpass);
+            volume: -4
+        }).connect(stepsHighpass);
 
         let datosOriginales = [];
         let agrupadoPorBebida = {};
@@ -706,6 +708,7 @@
             return (-b + Math.sqrt(b * b + 4 * k * areaObjetivo)) / (2 * k);
         }
 
+        // Carga simultánea: Datos JSON + Buffers de Audio de Tone.js
         Promise.all([
             fetch('data/data_starbucks_detallado.json').then(res => res.json()),
             Tone.loaded()
@@ -1204,7 +1207,7 @@
         });
 
         // =========================================================================
-        // REPRODUCCIÓN SONORA BASADA EXCLUSIVAMENTE EN DURACIÓN
+        // REPRODUCCIÓN SONORA BASADA EN DURACIÓN (ZANCADAS DE TROTE Y TERRONES)
         // =========================================================================
         async function reproducirSonidos(datos) {
             if (Tone.context.state !== 'running') await Tone.start();
@@ -1212,19 +1215,24 @@
             const gramosAzucar = Number(datos['Sugars (g)']) || 0;
             const calorias = Number(datos['Calories (Cal)']) || 0;
 
+            // 1. Canal de Calorías (Zancadas de Trote): Duración proporcional a las Calorías (0 - 500 Cal)
             if (energyPlayer.loaded) {
                 energyPlayer.stop();
                 energyPlayer.playbackRate = 1.0; 
 
+                // Mapeo a duración:
+                // Bebida ligera (0 - 15 Cal / ~1 min trote): ~0.25 s (una sola pisada corta)
+                // Bebida pesada (450 - 500 Cal / ~50 min trote): hasta 2.8 s (zancadas continuas)
                 const escalaDuracionEnergia = d3.scaleLinear()
                     .domain([0, 500])
-                    .range([0.15, 2.6])
+                    .range([0.25, 2.8])
                     .clamp(true);
 
                 const duracionEnergia = escalaDuracionEnergia(calorias);
                 energyPlayer.start(Tone.now(), 0, duracionEnergia);
             }
 
+            // 2. Canal de Azúcar (Terrones): Duración proporcional a los Gramos (0 - 80 g)
             if (sugarPlayer.loaded && gramosAzucar > 0) {
                 sugarPlayer.stop();
                 sugarPlayer.playbackRate = 1.0; 
