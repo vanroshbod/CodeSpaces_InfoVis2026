@@ -7,7 +7,7 @@
     
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
-
+    
     <style>
         body { 
             margin: 0; 
@@ -1350,6 +1350,28 @@
                     .attr("y", yBase - 14 - (Math.random() * (yBase - yLiquido - 14)))
                     .transition().duration(2000).style("opacity", 0.1).remove(); 
             }
+        }
+        let puertoSerial;
+        async function conectarArduino() {
+        try {
+            // Solicita al usuario seleccionar el puerto USB del Arduino Leonardo
+            puertoSerial = await navigator.serial.requestPort();
+            await puertoSerial.open({ baudRate: 9600 });
+            console.log("¡Arduino conectado exitosamente!");
+        } catch (error) {
+            console.error("Error al conectar con el Arduino:", error);
+        }
+        }
+
+        // Función que envíe los gramos al Arduino cada vez que cambie la bebida
+        async function enviarGramosAlArduino(gramos) {
+        if (!puertoSerial) return;
+        const encoder = new TextEncoder();
+        const writer = puertoSerial.writable.getWriter();
+        
+        // Enviamos el valor en texto plano seguido de un salto de línea
+        await writer.write(encoder.encode(gramos + "\n"));
+        writer.releaseLock();
         }
     </script>
 </body>
