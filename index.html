@@ -7,7 +7,7 @@
     
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
-    
+
     <style>
         body { 
             margin: 0; 
@@ -569,6 +569,25 @@
             <div id="lista-leches" class="lista-opciones">
                 <button class="opcion-btn" disabled>Selecciona un tamaño</button>
             </div>
+
+            <!-- CONTROL DEL ARDUINO -->
+            <div class="paso-titulo">4. Control Arduino</div>
+
+            <button id="btn-conectar-arduino" class="opcion-btn">
+                Conectar Arduino
+            </button>
+
+            <button id="btn-girar-arduino" class="opcion-btn">
+                Girar con bebida actual
+            </button>
+
+            <button id="btn-detener-arduino" class="opcion-btn">
+                Detener motor
+            </button>
+
+            <p id="estado-arduino" class="instrucciones">
+                Arduino desconectado
+            </p>
         </div>
     </div>
 
@@ -622,6 +641,112 @@
     </div>
 
     <script>
+        
+        // ==========================================
+        // CONEXIÓN CON ARDUINO
+        // ==========================================
+
+        let puertoArduino = null;
+        let escritorArduino = null;
+
+        const codificadorArduino = new TextEncoder();
+
+        const estadoArduino =
+            document.getElementById('estado-arduino');
+
+        // Conectar Arduino mediante USB
+        document.getElementById('btn-conectar-arduino')
+            .addEventListener('click', async () => {
+
+                if (!('serial' in navigator)) {
+                    estadoArduino.textContent =
+                        'Tu navegador no soporta Web Serial';
+                    return;
+                }
+
+                if (escritorArduino) return;
+
+                try {
+                    puertoArduino =
+                        await navigator.serial.requestPort();
+
+                    await puertoArduino.open({
+                        baudRate: 9600
+                    });
+
+                    escritorArduino =
+                        puertoArduino.writable.getWriter();
+
+                    estadoArduino.textContent =
+                        'Arduino conectado correctamente';
+
+                } catch (error) {
+                    console.error(error);
+                    estadoArduino.textContent =
+                        'No se pudo conectar el Arduino';
+                }
+            });
+
+        // Enviar los gramos de azúcar al Arduino
+        async function enviarAzucarAlArduino() {
+
+            if (!escritorArduino) {
+                estadoArduino.textContent =
+                    'Primero conecta el Arduino';
+                return;
+            }
+
+            if (!estadoActual.datosFinales) return;
+
+            const gramos = Number(
+                estadoActual.datosFinales['Sugars (g)']
+            );
+
+            if (!Number.isFinite(gramos)) return;
+
+            // Enviar el número seguido de salto de línea
+            const mensaje = `${gramos}\n`;
+
+            try {
+                await escritorArduino.write(
+                    codificadorArduino.encode(mensaje)
+                );
+
+                estadoArduino.textContent =
+                    `Enviados ${gramos} g de azúcar`;
+
+            } catch (error) {
+                console.error(error);
+                estadoArduino.textContent =
+                    'Error al enviar datos';
+            }
+        }
+
+        // Botón para enviar la bebida actual
+        document.getElementById('btn-girar-arduino')
+            .addEventListener('click', enviarAzucarAlArduino);
+
+        // Botón para detener el motor
+        document.getElementById('btn-detener-arduino')
+            .addEventListener('click', async () => {
+
+                if (!escritorArduino) return;
+
+                try {
+                    await escritorArduino.write(
+                        codificadorArduino.encode('0\n')
+                    );
+
+                    estadoArduino.textContent =
+                        'Orden de detención enviada';
+
+                } catch (error) {
+                    console.error(error);
+                    estadoArduino.textContent =
+                        'Error al detener el motor';
+                }
+            });
+
         const modalOverlay = document.getElementById('modal-overlay');
         const modalCard = document.getElementById('modal-card');
         const btnModalOk = document.getElementById('btn-modal-ok');
@@ -847,6 +972,11 @@
                 reproducirSonidos(estadoActual.datosFinales);
                 sonidoInicialReproducido = true;
             }
+            
+            // Enviar azúcar al Arduino si está conectado
+            if (escritorArduino) {
+                enviarAzucarAlArduino();
+            }
         }
 
         function renderizarBebidasVis(nombres) {
@@ -983,10 +1113,10 @@
                 .join("circle")
                 .attr("cx", d => x(Number(d["Sugars (g)"])))
                 .attr("cy", d => y(Number(d["Calories (Cal)"])))
-                .attr("r", d => esSeleccionado(d) ? 6.5 : 4.2)
+                .attr("r", d => esSeleccionado(d) ? 5.2 : 2.6)
                 .attr("fill", d => esSeleccionado(d) ? "#EAC784" : colorEscalaAzucar(Number(d["Sugars (g)"])))
-                .attr("stroke", d => esSeleccionado(d) ? "#ffffff" : "rgba(36, 22, 12, 0.75)")
-                .attr("stroke-width", d => esSeleccionado(d) ? 2.2 : 1.0)
+                .attr("stroke", d => esSeleccionado(d) ? "#ffffff" : "rgba(36, 22, 12, 0.7)")
+                .attr("stroke-width", d => esSeleccionado(d) ? 2 : 0.7)
                 .attr("opacity", d => esSeleccionado(d) ? 1 : 0.9)
                 .style("cursor", "pointer");
 
@@ -1350,28 +1480,6 @@
                     .attr("y", yBase - 14 - (Math.random() * (yBase - yLiquido - 14)))
                     .transition().duration(2000).style("opacity", 0.1).remove(); 
             }
-        }
-        let puertoSerial;
-        async function conectarArduino() {
-        try {
-            // Solicita al usuario seleccionar el puerto USB del Arduino Leonardo
-            puertoSerial = await navigator.serial.requestPort();
-            await puertoSerial.open({ baudRate: 9600 });
-            console.log("¡Arduino conectado exitosamente!");
-        } catch (error) {
-            console.error("Error al conectar con el Arduino:", error);
-        }
-        }
-
-        // Función que envíe los gramos al Arduino cada vez que cambie la bebida
-        async function enviarGramosAlArduino(gramos) {
-        if (!puertoSerial) return;
-        const encoder = new TextEncoder();
-        const writer = puertoSerial.writable.getWriter();
-        
-        // Enviamos el valor en texto plano seguido de un salto de línea
-        await writer.write(encoder.encode(gramos + "\n"));
-        writer.releaseLock();
         }
     </script>
 </body>
