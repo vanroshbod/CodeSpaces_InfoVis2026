@@ -515,7 +515,7 @@
 </head>
 <body>
 
-    <!-- CAPA DEL AURA ROJA REACTIVA PERIMETRAL -->
+    <!-- CAPA DEL AURA ROJA PERIMETRAL -->
     <div id="aura-peligro-overlay"></div>
 
     <!-- MODAL / CARD INFORMATIVA -->
@@ -554,6 +554,15 @@
     <div id="sidebar">
         <div id="sidebar-scroll-content">
             <h2>Arma tu Vaso</h2>
+
+            <!-- BOTÓN CONEXIÓN ARDUINO FÍSICO -->
+            <button id="btn-conectar-arduino" class="opcion-btn" style="background-color: #362415; border-color: #EAC784; color: #EAC784; font-weight: bold; margin-bottom: 12px; text-align: center;">
+                🔌 Conectar Arduino
+            </button>
+            <p id="estado-arduino" class="instrucciones" style="margin-top: 0; margin-bottom: 14px; font-size: 0.78em; color: #c9b8ab;">
+                Arduino desconectado
+            </p>
+
             <div class="instrucciones">Configura tu bebida paso a paso y descubre cuánta azúcar realmente estás consumiendo.</div>
 
             <div class="paso-titulo">1. Elige tu Bebida</div>
@@ -570,24 +579,19 @@
                 <button class="opcion-btn" disabled>Selecciona un tamaño</button>
             </div>
 
-            <!-- CONTROL DEL ARDUINO -->
-            <div class="paso-titulo">4. Control Arduino</div>
+            <!-- BOTÓN ENVIAR BEBIDA -->
+            <div style="margin-top: 24px;">
+                <button id="btn-enviar-bebida" class="opcion-btn" style="background-color: #00704A; border-color: #EAC784; color: #fff; font-weight: bold; width: 100%; text-align: center; padding: 12px; font-size: 1em;">
+                    ☕ Enviar Bebida
+                </button>
+            </div>
 
-            <button id="btn-conectar-arduino" class="opcion-btn">
-                Conectar Arduino
-            </button>
-
-            <button id="btn-girar-arduino" class="opcion-btn">
-                Girar con bebida actual
-            </button>
-
-            <button id="btn-detener-arduino" class="opcion-btn">
-                Detener motor
-            </button>
-
-            <p id="estado-arduino" class="instrucciones">
-                Arduino desconectado
-            </p>
+            <!-- BOTÓN DETENER MOTOR -->
+            <div style="margin-top: 8px;">
+                <button id="btn-detener-arduino" class="opcion-btn" style="background-color: #5a2e2e; border-color: #ff4757; color: #ff8b97; width: 100%; text-align: center; padding: 8px; font-size: 0.85em;">
+                    ⏹ Detener Motor Arduino
+                </button>
+            </div>
         </div>
     </div>
 
@@ -641,111 +645,54 @@
     </div>
 
     <script>
-        
         // ==========================================
-        // CONEXIÓN CON ARDUINO
+        // CONEXIÓN CON ARDUINO (WEB SERIAL API)
         // ==========================================
-
         let puertoArduino = null;
         let escritorArduino = null;
-
         const codificadorArduino = new TextEncoder();
+        const estadoArduino = document.getElementById('estado-arduino');
 
-        const estadoArduino =
-            document.getElementById('estado-arduino');
-
-        // Conectar Arduino mediante USB
-        document.getElementById('btn-conectar-arduino')
-            .addEventListener('click', async () => {
-
-                if (!('serial' in navigator)) {
-                    estadoArduino.textContent =
-                        'Tu navegador no soporta Web Serial';
-                    return;
-                }
-
-                if (escritorArduino) return;
-
-                try {
-                    puertoArduino =
-                        await navigator.serial.requestPort();
-
-                    await puertoArduino.open({
-                        baudRate: 9600
-                    });
-
-                    escritorArduino =
-                        puertoArduino.writable.getWriter();
-
-                    estadoArduino.textContent =
-                        'Arduino conectado correctamente';
-
-                } catch (error) {
-                    console.error(error);
-                    estadoArduino.textContent =
-                        'No se pudo conectar el Arduino';
-                }
-            });
-
-        // Enviar los gramos de azúcar al Arduino
-        async function enviarAzucarAlArduino() {
-
-            if (!escritorArduino) {
-                estadoArduino.textContent =
-                    'Primero conecta el Arduino';
+        document.getElementById('btn-conectar-arduino').addEventListener('click', async () => {
+            if (!('serial' in navigator)) {
+                estadoArduino.textContent = 'Tu navegador no soporta Web Serial';
                 return;
             }
 
-            if (!estadoActual.datosFinales) return;
-
-            const gramos = Number(
-                estadoActual.datosFinales['Sugars (g)']
-            );
-
-            if (!Number.isFinite(gramos)) return;
-
-            // Enviar el número seguido de salto de línea
-            const mensaje = `${gramos}\n`;
+            if (escritorArduino) return;
 
             try {
-                await escritorArduino.write(
-                    codificadorArduino.encode(mensaje)
-                );
-
-                estadoArduino.textContent =
-                    `Enviados ${gramos} g de azúcar`;
-
+                puertoArduino = await navigator.serial.requestPort();
+                await puertoArduino.open({ baudRate: 9600 });
+                
+                const textEncoder = new TextEncoderStream();
+                textEncoder.readable.pipeTo(puertoArduino.writable);
+                escritorArduino = textEncoder.writable.getWriter();
+                
+                estadoArduino.textContent = 'Arduino conectado correctamente';
+                document.getElementById('btn-conectar-arduino').style.borderColor = '#00704A';
+                document.getElementById('btn-conectar-arduino').style.color = '#00704A';
             } catch (error) {
                 console.error(error);
-                estadoArduino.textContent =
-                    'Error al enviar datos';
+                estadoArduino.textContent = 'No se pudo conectar el Arduino';
             }
-        }
-
-        // Botón para enviar la bebida actual
-        document.getElementById('btn-girar-arduino')
-            .addEventListener('click', enviarAzucarAlArduino);
+        });
 
         // Botón para detener el motor
-        document.getElementById('btn-detener-arduino')
-            .addEventListener('click', async () => {
+        document.getElementById('btn-detener-arduino').addEventListener('click', async () => {
+            if (!escritorArduino) {
+                estadoArduino.textContent = 'Arduino no conectado';
+                return;
+            }
 
-                if (!escritorArduino) return;
-
-                try {
-                    await escritorArduino.write(
-                        codificadorArduino.encode('0\n')
-                    );
-
-                    estadoArduino.textContent =
-                        'Orden de detención enviada';
-
-                } catch (error) {
-                    console.error(error);
-                    estadoArduino.textContent =
-                        'Error al detener el motor';
-                }
-            });
+            try {
+                await escritorArduino.write(codificadorArduino.encode('0\n'));
+                estadoArduino.textContent = 'Orden de detención enviada';
+            } catch (error) {
+                console.error(error);
+                estadoArduino.textContent = 'Error al detener el motor';
+            }
+        });
 
         const modalOverlay = document.getElementById('modal-overlay');
         const modalCard = document.getElementById('modal-card');
@@ -768,8 +715,6 @@
         // ========================================================
         // FILTRADO DE FRECUENCIAS Y SONIFICACIÓN (TONE.JS)
         // ========================================================
-
-        // 1. Canal de Azúcar: Agudos puros (> 3 kHz), volumen fijo normalizado
         const sugarHighpass = new Tone.Filter({
             frequency: 3000,
             type: "highpass",
@@ -782,7 +727,6 @@
             volume: -8
         }).connect(sugarHighpass);
 
-        // 2. Canal de Calorías ("Glup-Glup"): Filtro pasa-bajos (750 Hz) para textura densa y viscosa
         const glupLowpass = new Tone.Filter({
             frequency: 750,
             type: "lowpass",
@@ -828,63 +772,42 @@
             return (-b + Math.sqrt(b * b + 4 * k * areaObjetivo)) / (2 * k);
         }
 
-        // Carga simultánea: Datos JSON + Buffers de Audio de Tone.js
-        Promise.all([
-            fetch('data/data_starbucks_detallado.json').then(res => res.json()),
-            Tone.loaded()
-        ])
-        .then(([data]) => {
-            data.forEach(d => {
-                let leche = d.tamano_preparacion_bebida.replace(d.tamano_vaso, '').trim();
-                d.tipo_leche = leche !== "" ? leche : "Sin Leche";
-                d['Sugars (g)'] = d['Sugars (g)'] !== undefined ? d['Sugars (g)'] : (d.azucar_pct * d.volumen_ml / 100);
-            });
+        // Carga rápida de datos
+        fetch('data/data_starbucks_detallado.json')
+            .then(res => res.json())
+            .then(data => {
+                data.forEach(d => {
+                    let leche = d.tamano_preparacion_bebida.replace(d.tamano_vaso, '').trim();
+                    d.tipo_leche = leche !== "" ? leche : "Sin Leche";
+                    d['Sugars (g)'] = d['Sugars (g)'] !== undefined ? d['Sugars (g)'] : (d.azucar_pct * d.volumen_ml / 100);
+                });
 
-            datosOriginales = data.filter(d => d.Bebida && d.tamano_vaso);
-            agrupadoPorBebida = d3.group(datosOriginales, d => d.Bebida);
-            
-            inicializarD3();
-            inicializarRelojEnergetico();
-            renderizarBebidasVis(Array.from(agrupadoPorBebida.keys()).sort());
-            renderizarOverview();
+                datosOriginales = data.filter(d => d.Bebida && d.tamano_vaso);
+                agrupadoPorBebida = d3.group(datosOriginales, d => d.Bebida);
+                
+                inicializarD3();
+                inicializarRelojEnergetico();
+                renderizarBebidasVis(Array.from(agrupadoPorBebida.keys()).sort());
+                renderizarOverview();
 
-            peorCasoGlobal = datosOriginales.reduce((prev, curr) => {
-                return (Number(curr['Sugars (g)']) || 0) > (Number(prev['Sugars (g)']) || 0) ? curr : prev;
-            }, datosOriginales[0]);
+                peorCasoGlobal = datosOriginales.reduce((prev, curr) => {
+                    return (Number(curr['Sugars (g)']) || 0) > (Number(prev['Sugars (g)']) || 0) ? curr : prev;
+                }, datosOriginales[0]);
 
-            if (peorCasoGlobal) {
-                estadoActual.bebida = peorCasoGlobal.Bebida;
-                estadoActual.tamano = peorCasoGlobal.tamano_vaso;
-                estadoActual.leche = peorCasoGlobal.tipo_leche;
-                procesarSeleccion('bebida', peorCasoGlobal.Bebida);
-            }
-
-            intentarReproducirSonidoInicial();
-        })
-        .catch(error => {
-            console.error("Error al cargar datos o sonidos:", error);
-        });
-
-        async function intentarReproducirSonidoInicial() {
-            if (sonidoInicialReproducido || !estadoActual.datosFinales) return;
-            try {
-                if (Tone.context.state !== 'running') {
-                    await Tone.start();
+                if (peorCasoGlobal) {
+                    estadoActual.bebida = peorCasoGlobal.Bebida;
+                    estadoActual.tamano = peorCasoGlobal.tamano_vaso;
+                    estadoActual.leche = peorCasoGlobal.tipo_leche;
+                    procesarSeleccionSinEjecutar('bebida', peorCasoGlobal.Bebida);
                 }
-                reproducirSonidos(estadoActual.datosFinales);
-                sonidoInicialReproducido = true;
-            } catch (e) {
-                // En espera de primera interacción de usuario
-            }
-        }
+            })
+            .catch(error => {
+                console.error("Error al cargar datos:", error);
+            });
 
         const desbloquearAudioInicial = async () => {
             if (Tone.context.state !== 'running') {
                 await Tone.start();
-            }
-            if (!sonidoInicialReproducido && estadoActual.datosFinales) {
-                reproducirSonidos(estadoActual.datosFinales);
-                sonidoInicialReproducido = true;
             }
             window.removeEventListener('pointerdown', desbloquearAudioInicial);
             window.removeEventListener('keydown', desbloquearAudioInicial);
@@ -920,7 +843,8 @@
             return mejorTamano;
         }
 
-        function procesarSeleccion(tipo, valor) {
+        // Función que procesa los clics de configuración SIN activar animaciones ni sonidos
+        function procesarSeleccionSinEjecutar(tipo, valor) {
             if (tipo === 'bebida') estadoActual.bebida = valor;
             else if (tipo === 'tamano') estadoActual.tamano = valor;
             else if (tipo === 'leche') estadoActual.leche = valor;
@@ -964,19 +888,7 @@
                 banner.style.display = 'none';
             }
 
-            actualizarVasoD3();
             renderizarOverview();
-            actualizarRelojEnergetico();
-
-            if (estadoActual.datosFinales && Tone.context.state === 'running') {
-                reproducirSonidos(estadoActual.datosFinales);
-                sonidoInicialReproducido = true;
-            }
-            
-            // Enviar azúcar al Arduino si está conectado
-            if (escritorArduino) {
-                enviarAzucarAlArduino();
-            }
         }
 
         function renderizarBebidasVis(nombres) {
@@ -987,7 +899,7 @@
                 btn.className = 'opcion-btn';
                 if (estadoActual.bebida === nombre) btn.classList.add('active');
                 btn.innerText = nombre;
-                btn.onclick = () => procesarSeleccion('bebida', nombre);
+                btn.onclick = () => procesarSeleccionSinEjecutar('bebida', nombre);
                 contenedor.appendChild(btn);
             });
         }
@@ -1002,7 +914,7 @@
                 btn.className = 'opcion-btn';
                 if (estadoActual.tamano === tam) btn.classList.add('active');
                 btn.innerText = tam;
-                btn.onclick = () => procesarSeleccion('tamano', tam);
+                btn.onclick = () => procesarSeleccionSinEjecutar('tamano', tam);
                 contenedor.appendChild(btn);
             });
         }
@@ -1015,10 +927,45 @@
                 btn.className = 'opcion-btn';
                 if (estadoActual.leche === leche) btn.classList.add('active');
                 btn.innerText = leche;
-                btn.onclick = () => procesarSeleccion('leche', leche);
+                btn.onclick = () => procesarSeleccionSinEjecutar('leche', leche);
                 contenedor.appendChild(btn);
             });
         }
+
+        // ==========================================
+        // ACCIÓN DEL BOTÓN "ENVIAR BEBIDA"
+        // ==========================================
+        document.getElementById('btn-enviar-bebida').addEventListener('click', async () => {
+            if (!estadoActual.datosFinales) {
+                alert("Por favor selecciona una bebida, tamaño y leche primero.");
+                return;
+            }
+
+            // 1. Iniciar contexto de audio de Tone.js por interacción de usuario
+            if (Tone.context.state !== 'running') {
+                await Tone.start();
+            }
+
+            // 2. Ejecutar animación del vaso, sonidos y reloj energético
+            actualizarVasoD3();
+            reproducirSonidos(estadoActual.datosFinales);
+            actualizarRelojEnergetico();
+
+            // 3. Enviar señal de azúcar al Arduino por USB si está conectado
+            if (escritorArduino) {
+                const gramos = Number(estadoActual.datosFinales['Sugars (g)']);
+                if (Number.isFinite(gramos)) {
+                    try {
+                        const mensaje = `${Math.round(gramos)}\n`;
+                        await escritorArduino.write(codificadorArduino.encode(mensaje));
+                        estadoArduino.textContent = `Enviados ${Math.round(gramos)} g al Arduino`;
+                    } catch (error) {
+                        console.error(error);
+                        estadoArduino.textContent = 'Error al enviar datos al Arduino';
+                    }
+                }
+            }
+        });
 
         /* --- Mini Gráfico de Dispersión Overview --- */
         function renderizarOverview() {
@@ -1113,10 +1060,10 @@
                 .join("circle")
                 .attr("cx", d => x(Number(d["Sugars (g)"])))
                 .attr("cy", d => y(Number(d["Calories (Cal)"])))
-                .attr("r", d => esSeleccionado(d) ? 5.2 : 2.6)
+                .attr("r", d => esSeleccionado(d) ? 6.5 : 4.2)
                 .attr("fill", d => esSeleccionado(d) ? "#EAC784" : colorEscalaAzucar(Number(d["Sugars (g)"])))
-                .attr("stroke", d => esSeleccionado(d) ? "#ffffff" : "rgba(36, 22, 12, 0.7)")
-                .attr("stroke-width", d => esSeleccionado(d) ? 2 : 0.7)
+                .attr("stroke", d => esSeleccionado(d) ? "#ffffff" : "rgba(36, 22, 12, 0.75)")
+                .attr("stroke-width", d => esSeleccionado(d) ? 2.2 : 1.0)
                 .attr("opacity", d => esSeleccionado(d) ? 1 : 0.9)
                 .style("cursor", "pointer");
 
@@ -1124,7 +1071,7 @@
                 .text(d => `${d.Bebida} (Promedio):\n• Azúcar: ${Number(d["Sugars (g)"]).toFixed(1)} g\n• Calorías: ${Number(d["Calories (Cal)"]).toFixed(1)} Cal`);
 
             puntos.on("click", (event, d) => {
-                procesarSeleccion("bebida", d.Bebida);
+                procesarSeleccionSinEjecutar("bebida", d.Bebida);
             });
 
             const seleccion = estadoActual.datosFinales;
@@ -1332,7 +1279,7 @@
         });
 
         // =========================================================================
-        // REPRODUCCIÓN SONORA BASADA EN DURACIONES EQUIVALENTES (CALORÍAS Y AZÚCAR)
+        // REPRODUCCIÓN SONORA BASADA EN DURACIONES EQUIVALENTES
         // =========================================================================
         async function reproducirSonidos(datos) {
             if (Tone.context.state !== 'running') await Tone.start();
@@ -1340,15 +1287,11 @@
             const gramosAzucar = Number(datos['Sugars (g)']) || 0;
             const calorias = Number(datos['Calories (Cal)']) || 0;
 
-            // 1. Canal de Calorías ("Glup-Glup"):
-            // Si la bebida tiene 0 calorías, se detiene y NO emite sonido.
             if (glupPlayer.loaded) {
                 glupPlayer.stop();
 
                 if (calorias > 0) {
-                    glupPlayer.playbackRate = 1.0; // Velocidad y tono constantes
-
-                    // Rango [1.6s - 4.0s] proporcional a Calorías
+                    glupPlayer.playbackRate = 1.0;
                     const escalaDuracionCalorias = d3.scaleLinear()
                         .domain([1, 500])
                         .range([1.6, 4.0])
@@ -1359,15 +1302,11 @@
                 }
             }
 
-            // 2. Canal de Azúcar (Terrones):
-            // Si la bebida tiene 0g de azúcar, se detiene y NO emite sonido.
-            // Comparte el rango idéntico [1.6s - 4.0s] para igualar prominencia.
             if (sugarPlayer.loaded) {
                 sugarPlayer.stop();
 
                 if (gramosAzucar > 0) {
-                    sugarPlayer.playbackRate = 1.0; // Velocidad y tono constantes
-
+                    sugarPlayer.playbackRate = 1.0;
                     const escalaDuracionAzucar = d3.scaleLinear()
                         .domain([1, 80])
                         .range([1.6, 4.0])
@@ -1419,15 +1358,14 @@
             barraFill.style.width = Math.min(pctOms, 100) + "%";
             barraFill.style.background = targetColor;
             
-            document.getElementById('pct-impacto').innerText = `${Math.round(pctOms)}% del límite diario`;
+            const pctImpactoElem = document.getElementById('pct-impacto');
+            if (pctImpactoElem) {
+                pctImpactoElem.innerText = `${Math.round(pctOms)}% del límite diario`;
+            }
             
-            // ========================================================
-            // AURA ROJA PERIMETRAL MENOS INVASIVA (BORDE SUTIL)
-            // ========================================================
             const auraOverlay = document.getElementById('aura-peligro-overlay');
             if (gramosAzucar >= 50) {
                 const excesoPct = Math.min(Math.max((gramosAzucar - 50) / 40, 0), 1);
-                
                 const opacidadAura = 0.20 + (excesoPct * 0.35);
                 const blurAura = Math.round(20 + (excesoPct * 40));
                 const spreadAura = Math.round(5 + (excesoPct * 15));
