@@ -173,7 +173,7 @@
             gap: 8px; 
         }
 
-        /* --- Panel de Visualización Central (#604c4c) --- */
+        /* --- Panel Central Sin Superposiciones --- */
         #viz-container { 
             flex: 1; 
             position: relative; 
@@ -181,22 +181,21 @@
             background: radial-gradient(circle at center, #725b5b 0%, #604c4c 100%);
         }
 
-        /* Cabecera izquierda ampliada horizontalmente */
+        /* Cabecera superior izquierda reubicada para evitar choque con métricas */
         #viz-header { 
             position: absolute; 
             top: 25px; 
             left: 35px; 
-            right: 270px; 
+            right: 280px; 
             z-index: 20; 
             pointer-events: none;
         }
         .viz-title { 
             color: #fffcfe; 
-            font-size: 1.85em; 
+            font-size: 1.7em; 
             font-weight: 800; 
-            margin: 0 0 8px 0; 
+            margin: 0 0 6px 0; 
             line-height: 1.15; 
-            max-width: 340px; 
             text-shadow: 0 2px 8px rgba(0,0,0,0.4);
         }
         .viz-title span { 
@@ -204,20 +203,19 @@
         }
         .viz-subtitle { 
             color: #f3ede6; 
-            font-size: 1em; 
-            line-height: 1.45; 
+            font-size: 0.9em; 
+            line-height: 1.4; 
             margin: 0; 
-            max-width: 720px; 
             text-shadow: 0 1px 4px rgba(0,0,0,0.3);
         }
 
-        /* Panel métricas de azúcar superior derecho */
+        /* Panel métricas de azúcar superior derecho (Ajustado) */
         #metricas-panel {
             position: absolute; 
-            top: 50px; 
+            top: 135px; 
             right: 25px; 
             background: rgba(54, 36, 21, 0.94);
-            padding: 16px 18px; 
+            padding: 14px 16px; 
             border-radius: 12px; 
             border: 1px solid rgba(234, 199, 132, 0.3);
             box-shadow: 0 12px 32px rgba(0,0,0,0.55); 
@@ -228,24 +226,22 @@
             box-sizing: border-box;
         }
         .metrica-valor {
-            font-size: 2.5em;
+            font-size: 2.2em;
             font-weight: bold;
-            margin: 6px 0;
+            margin: 4px 0;
             line-height: 1; 
         }
-        
         .metrica-label {
-            font-size: 0.78em;
+            font-size: 0.75em;
             color: #f0e6dc;
             text-transform: uppercase;
             letter-spacing: 1px;
             font-weight: 600;
         }
-        
         .alerta-oms {
-            padding: 8px 10px;
-            margin-top: 10px;
-            font-size: 0.78em;
+            padding: 6px 8px;
+            margin-top: 8px;
+            font-size: 0.75em;
             display: none;
             font-weight: bold;
             border-radius: 4px;
@@ -262,55 +258,68 @@
             color: #ff8b97;
         }
 
-        /* Mini Gráfico Overview ubicado a la IZQUIERDA del vaso */
+        /* --- GRÁFICO CENTRAL PROTAGONISTA (Sin choques) --- */
         #overview-panel {
             position: absolute;
             left: 35px;
-            top: 195px;
-            width: 260px;
-            max-height: 45vh;
-            overflow: hidden;
+            top: 135px;
+            width: calc(100% - 300px);
+            max-width: 580px;
+            height: calc(100vh - 225px);
+            max-height: 480px;
             box-sizing: border-box;
-            padding: 14px 16px;
+            padding: 18px 22px;
             background: rgba(54, 36, 21, 0.94);
-            border: 1px solid rgba(234, 199, 132, 0.3);
-            border-radius: 12px;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.55);
+            border: 1px solid rgba(234, 199, 132, 0.4);
+            border-radius: 16px;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.65);
             z-index: 20;
+            display: flex;
+            flex-direction: column;
         }
 
         #overview-panel h3 {
-            margin: 0 0 4px;
+            margin: 0 0 2px;
             color: #EAC784;
-            font-size: 1.05em;
+            font-size: 1.15em;
         }
 
         #overview-panel p {
-            margin: 0 0 8px;
+            margin: 0 0 10px;
             color: #f0e6dc;
-            font-size: 0.78em;
-            line-height: 1.35;
+            font-size: 0.82em;
+        }
+
+        #overview-grafico {
+            flex: 1;
+            width: 100%;
+            position: relative;
+            min-height: 0;
         }
 
         #overview-grafico svg {
-            display: block;
             width: 100%;
-            height: auto;
+            height: 100%;
+            display: block;
         }
 
         #overview-detalle {
-            margin-top: 6px;
+            margin-top: 8px;
             color: #fffcfe;
-            font-size: 0.8em;
+            font-size: 0.85em;
             line-height: 1.35;
-            font-weight: 500;
+            font-weight: 600;
+            background: rgba(36, 22, 12, 0.6);
+            padding: 8px 12px;
+            border-radius: 8px;
+            border-left: 4px solid #00704A;
         }
 
         /* --- Tarjeta Reloj Energético (180°) - Derecha Inferior --- */
         #reloj-panel {
             position: absolute;
             right: 25px;
-            bottom: 100px;
+            bottom: 75px;
             width: 220px;
             background: rgba(54, 36, 21, 0.94);
             border: 1px solid rgba(234, 199, 132, 0.3);
@@ -326,7 +335,7 @@
         #reloj-panel h3 {
             margin: 0 0 2px 0;
             color: #EAC784;
-            font-size: 0.85em;
+            font-size: 0.82em;
             text-transform: uppercase;
             letter-spacing: 1px;
             display: flex;
@@ -336,7 +345,7 @@
 
         #reloj-grafico {
             width: 100%;
-            height: 95px;
+            height: 85px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -354,46 +363,46 @@
         }
 
         .reloj-cal-val {
-            font-size: 1.6em;
+            font-size: 1.45em;
             font-weight: 800;
             color: #fffcfe;
             line-height: 1.1;
         }
 
         .reloj-sub {
-            font-size: 0.76em;
+            font-size: 0.72em;
             color: #f0e6dc;
             margin-top: 2px;
         }
 
         .reloj-ejercicio {
-            margin-top: 6px;
-            padding-top: 6px;
+            margin-top: 5px;
+            padding-top: 5px;
             border-top: 1px solid #4d3627;
-            font-size: 0.78em;
+            font-size: 0.74em;
             color: #EAC784;
             text-align: center;
             font-weight: 600;
         }
 
-        /* Cartel Alerta Peor Caso Ubicado Abajo del Vaso */
+        /* Cartel Alerta Peor Caso Ubicado Abajo */
         @keyframes pulse-alerta {
             0% { transform: translateX(-50%) scale(1); box-shadow: 0 0 18px rgba(255, 71, 87, 0.5); }
-            50% { transform: translateX(-50%) scale(1.03); box-shadow: 0 0 28px rgba(255, 71, 87, 0.9); }
+            50% { transform: translateX(-50%) scale(1.02); box-shadow: 0 0 28px rgba(255, 71, 87, 0.9); }
             100% { transform: translateX(-50%) scale(1); box-shadow: 0 0 18px rgba(255, 71, 87, 0.5); }
         }
         #banner-peor-caso {
             position: absolute;
-            bottom: 25px;
-            left: 50%;
+            bottom: 15px;
+            left: calc(180px + (100vw - 360px) / 2);
             transform: translateX(-50%);
             z-index: 30;
             background: rgba(45, 12, 12, 0.96);
             border: 2px solid #ff4757;
             border-radius: 8px;
-            padding: 10px 22px;
+            padding: 8px 18px;
             color: #ff8b97;
-            font-size: 0.95em;
+            font-size: 0.88em;
             font-weight: 800;
             letter-spacing: 0.5px;
             text-align: center;
@@ -402,34 +411,6 @@
             display: none;
             white-space: nowrap;
         }
-
-        /* Líneas y Etiquetas OMS */
-        .oms-label-25 { 
-            fill: #ffd074; 
-            font-size: 10.5px; 
-            font-weight: bold; 
-            letter-spacing: 0.5px; 
-            filter: drop-shadow(0px 1px 3px rgba(0,0,0,0.8));
-        }
-        .oms-line-25 {
-            stroke: #ffa502;
-            stroke-width: 2;
-            stroke-dasharray: 5,4; 
-        }
-        
-        .oms-label-50 { 
-            fill: #fa3048;
-            font-size: 10.5px; 
-            font-weight: 800; 
-            letter-spacing: 0.5px; 
-            filter: drop-shadow(0px 1px 3px rgba(0,0,0,0.9));
-        }
-        .oms-line-50 { 
-            stroke: #fa3048;
-            stroke-width: 2.8; 
-            stroke-dasharray: 6,4; 
-        }
-        .terron { fill: #fff; opacity: 0.9; rx: 4; ry: 4; }
 
         /* Botón flotante de Información (i) */
         #btn-info-modal {
@@ -563,7 +544,7 @@
                 Arduino desconectado
             </p>
 
-            <div class="instrucciones">Configura tu bebida paso a paso y descubre cuánta azúcar realmente estás consumiendo.</div>
+            <div class="instrucciones">Configura tu bebida paso a paso y presiona enviar para accionar el vaso físico.</div>
 
             <div class="paso-titulo">1. Elige tu Bebida</div>
             <input type="text" id="search-box" placeholder="Ej: Frappuccino, Latte, Mocha...">
@@ -582,7 +563,7 @@
             <!-- BOTÓN ENVIAR BEBIDA -->
             <div style="margin-top: 24px;">
                 <button id="btn-enviar-bebida" class="opcion-btn" style="background-color: #00704A; border-color: #EAC784; color: #fff; font-weight: bold; width: 100%; text-align: center; padding: 12px; font-size: 1em;">
-                    ☕ Enviar Bebida
+                    ☕ Enviar Bebida Física
                 </button>
             </div>
 
@@ -596,41 +577,41 @@
     </div>
 
     <div id="viz-container">
-        <!-- Banner de advertencia del peor caso ubicado abajo del vaso -->
+        <!-- Banner de advertencia del peor caso restaurado abajo -->
         <div id="banner-peor-caso"></div>
 
         <!-- Botón flotante (i) -->
         <button id="btn-info-modal" title="Información del Proyecto">i</button>
 
         <div id="viz-header">
-            <h1 class="viz-title">¿Cuánta azúcar <span>esconde tu vaso?</span></h1>
-            <p class="viz-subtitle">Observa cómo se llena tu bebida y descubre su impacto frente a los límites de la OMS.</p>
+            <h1 class="viz-title">Explorador Nutricional de <span>Starbucks</span></h1>
+            <p class="viz-subtitle">Selecciona una bebida en el gráfico para analizar su azúcar y calorías, y envíala a tu dispositivo físico.</p>
         </div>
 
         <!-- Panel métricas de azúcar superior derecho -->
         <div id="metricas-panel">
             <div class="metrica-label">Contenido de Azúcar</div>
             <div id="valor-azucar" class="metrica-valor" style="color: #fffcfe;">0g</div>
-            <div id="equivalencia-cucharadas" style="color: #f0e6dc; font-size: 0.85em; margin-bottom: 12px;">0 cucharaditas 🥄</div>
+            <div id="equivalencia-cucharadas" style="color: #f0e6dc; font-size: 0.82em; margin-bottom: 10px;">0 cucharaditas 🥄</div>
             
             <div class="metrica-label">Impacto vs Máximo OMS</div>
-            <div id="barra-impacto" style="width: 100%; height: 7px; background: #24160c; border-radius: 4px; overflow: hidden; margin-top: 6px;">
+            <div id="barra-impacto" style="width: 100%; height: 6px; background: #24160c; border-radius: 4px; overflow: hidden; margin-top: 4px;">
                 <div id="fill-impacto" style="width: 0%; height: 100%; background: #ff4757; transition: width 0.5s, background 0.5s;"></div>
             </div>
-            <div id="pct-impacto" style="text-align: right; font-size: 0.8em; color: #f0e6dc; margin-top: 4px;">0% del límite diario</div>
+            <div id="pct-impacto" style="text-align: right; font-size: 0.75em; color: #f0e6dc; margin-top: 3px;">0% del límite diario</div>
 
             <div id="alerta-oms" class="alerta-oms"></div>
         </div>
 
-        <!-- Vista general de las variantes del menú (Overview) ubicada a la izquierda del vaso -->
+        <!-- GRÁFICO CENTRAL PROTAGONISTA -->
         <div id="overview-panel">
-            <h3>Azúcar en el menú</h3>
-            <p>Cada punto representa una variante. Haz clic para seleccionarla.</p>
+            <h3>Azúcar vs Calorías en el Menú</h3>
+            <p>Cada punto representa una bebida. Haz clic en cualquiera para seleccionarla.</p>
             <div id="overview-grafico"></div>
             <div id="overview-detalle">Cargando datos...</div>
         </div>
 
-        <!-- TARJETA RELOJ ENERGÉTICO (180°) - Derecha inferior del vaso -->
+        <!-- TARJETA RELOJ ENERGÉTICO (180°) - Derecha inferior -->
         <div id="reloj-panel">
             <h3><span>Reloj Energético</span> <span>⚡</span></h3>
             <div id="reloj-grafico"></div>
@@ -742,7 +723,6 @@
         let datosOriginales = [];
         let agrupadoPorBebida = {};
         let peorCasoGlobal = null;
-        let sonidoInicialReproducido = false;
         
         let estadoActual = {
             bebida: null,
@@ -752,25 +732,6 @@
         };
 
         const jerarquiaTamanos = ["Solo", "Doppio", "Short", "Tall", "Grande", "Venti"];
-
-        let svg, cupFill, cupClip;
-        let cupHeight = 340, cupWidthTop = 210, cupWidthBottom = 150;
-        let gTerrones;
-
-        function alturaParaAzucar(gramos) {
-            const H = cupHeight;
-            const b = cupWidthBottom;
-            const B = cupWidthTop;
-            const maxAzucar = 90;
-
-            const g = Math.max(0, Math.min(Number(gramos) || 0, maxAzucar));
-            const areaTotal = ((B + b) / 2) * H;
-            const areaObjetivo = areaTotal * (g / maxAzucar);
-            const k = (B - b) / (2 * H);
-
-            if (Math.abs(k) < 1e-6) return areaObjetivo / b;
-            return (-b + Math.sqrt(b * b + 4 * k * areaObjetivo)) / (2 * k);
-        }
 
         // Carga rápida de datos
         fetch('data/data_starbucks_detallado.json')
@@ -785,7 +746,6 @@
                 datosOriginales = data.filter(d => d.Bebida && d.tamano_vaso);
                 agrupadoPorBebida = d3.group(datosOriginales, d => d.Bebida);
                 
-                inicializarD3();
                 inicializarRelojEnergetico();
                 renderizarBebidasVis(Array.from(agrupadoPorBebida.keys()).sort());
                 renderizarOverview();
@@ -843,7 +803,6 @@
             return mejorTamano;
         }
 
-        // Función que procesa los clics de configuración SIN activar animaciones ni sonidos
         function procesarSeleccionSinEjecutar(tipo, valor) {
             if (tipo === 'bebida') estadoActual.bebida = valor;
             else if (tipo === 'tamano') estadoActual.tamano = valor;
@@ -877,7 +836,11 @@
             renderizarBebidasVis(nombres);
             renderizarTamanosVis(tamanosDisp);
             renderizarLechesVis(lechesDisp);
+            renderizarOverview();
+            actualizarPanelMetricasUI();
+            actualizarRelojEnergetico();
 
+            // Gestionar Banner del Peor Caso
             const banner = document.getElementById('banner-peor-caso');
             if (peorCasoGlobal && estadoActual.datosFinales && 
                 estadoActual.datosFinales.Bebida === peorCasoGlobal.Bebida && 
@@ -887,8 +850,6 @@
             } else {
                 banner.style.display = 'none';
             }
-
-            renderizarOverview();
         }
 
         function renderizarBebidasVis(nombres) {
@@ -933,7 +894,7 @@
         }
 
         // ==========================================
-        // ACCIÓN DEL BOTÓN "ENVIAR BEBIDA"
+        // ACCIÓN DEL BOTÓN "ENVIAR BEBIDA FÍSICA"
         // ==========================================
         document.getElementById('btn-enviar-bebida').addEventListener('click', async () => {
             if (!estadoActual.datosFinales) {
@@ -941,17 +902,13 @@
                 return;
             }
 
-            // 1. Iniciar contexto de audio de Tone.js por interacción de usuario
             if (Tone.context.state !== 'running') {
                 await Tone.start();
             }
 
-            // 2. Ejecutar animación del vaso, sonidos y reloj energético
-            actualizarVasoD3();
             reproducirSonidos(estadoActual.datosFinales);
             actualizarRelojEnergetico();
 
-            // 3. Enviar señal de azúcar al Arduino por USB si está conectado
             if (escritorArduino) {
                 const gramos = Number(estadoActual.datosFinales['Sugars (g)']);
                 if (Number.isFinite(gramos)) {
@@ -967,7 +924,7 @@
             }
         });
 
-        /* --- Mini Gráfico de Dispersión Overview --- */
+        /* --- Gráfico Central Protagonista --- */
         function renderizarOverview() {
             const contenedor = d3.select("#overview-grafico");
             contenedor.selectAll("*").remove();
@@ -993,9 +950,10 @@
 
             let datos = Array.from(gruposMap.values());
 
-            const ancho = 230;
-            const alto = 145;
-            const margen = { top: 12, right: 12, bottom: 28, left: 36 };
+            const DOMElement = document.getElementById('overview-grafico');
+            const ancho = DOMElement.clientWidth || 520;
+            const alto = DOMElement.clientHeight || 280;
+            const margen = { top: 15, right: 20, bottom: 40, left: 50 };
 
             const maxAzucar = d3.max(datos, d => Number(d["Sugars (g)"])) || 10;
             const maxCalorias = d3.max(datos, d => Number(d["Calories (Cal)"])) || 100;
@@ -1003,7 +961,7 @@
             const svgOverview = contenedor.append("svg")
                 .attr("viewBox", `0 0 ${ancho} ${alto}`)
                 .attr("role", "img")
-                .attr("aria-label", "Azúcar vs Calorías promedio por bebida");
+                .attr("aria-label", "Azúcar vs Calorías por bebida");
 
             const x = d3.scaleLinear()
                 .domain([0, Math.max(10, maxAzucar)])
@@ -1017,31 +975,31 @@
 
             svgOverview.append("g")
                 .attr("transform", `translate(0,${alto - margen.bottom})`)
-                .call(d3.axisBottom(x).ticks(4))
-                .call(g => g.selectAll("text").attr("fill", "#f3ede6").attr("font-size", 8.5))
+                .call(d3.axisBottom(x).ticks(5))
+                .call(g => g.selectAll("text").attr("fill", "#f3ede6").attr("font-size", 10))
                 .call(g => g.selectAll("path,line").attr("stroke", "#8c7260"));
 
             svgOverview.append("text")
                 .attr("x", ancho / 2)
-                .attr("y", alto - 3)
+                .attr("y", alto - 5)
                 .attr("fill", "#fffcfe")
-                .attr("font-size", 9)
+                .attr("font-size", 11)
                 .attr("font-weight", "600")
                 .attr("text-anchor", "middle")
-                .text("Promedio Azúcar (g)");
+                .text("Promedio de Azúcar (g)");
 
             svgOverview.append("g")
                 .attr("transform", `translate(${margen.left},0)`)
-                .call(d3.axisLeft(y).ticks(4))
-                .call(g => g.selectAll("text").attr("fill", "#f3ede6").attr("font-size", 8.5))
+                .call(d3.axisLeft(y).ticks(5))
+                .call(g => g.selectAll("text").attr("fill", "#f3ede6").attr("font-size", 10))
                 .call(g => g.selectAll("path,line").attr("stroke", "#8c7260"));
 
             svgOverview.append("text")
                 .attr("transform", "rotate(-90)")
                 .attr("x", -(alto / 2))
-                .attr("y", 10)
+                .attr("y", 14)
                 .attr("fill", "#fffcfe")
-                .attr("font-size", 8.5)
+                .attr("font-size", 11)
                 .attr("font-weight", "600")
                 .attr("text-anchor", "middle")
                 .text("Calorías (Cal)");
@@ -1060,11 +1018,11 @@
                 .join("circle")
                 .attr("cx", d => x(Number(d["Sugars (g)"])))
                 .attr("cy", d => y(Number(d["Calories (Cal)"])))
-                .attr("r", d => esSeleccionado(d) ? 6.5 : 4.2)
+                .attr("r", d => esSeleccionado(d) ? 8.5 : 5.5)
                 .attr("fill", d => esSeleccionado(d) ? "#EAC784" : colorEscalaAzucar(Number(d["Sugars (g)"])))
-                .attr("stroke", d => esSeleccionado(d) ? "#ffffff" : "rgba(36, 22, 12, 0.75)")
-                .attr("stroke-width", d => esSeleccionado(d) ? 2.2 : 1.0)
-                .attr("opacity", d => esSeleccionado(d) ? 1 : 0.9)
+                .attr("stroke", d => esSeleccionado(d) ? "#ffffff" : "rgba(36, 22, 12, 0.8)")
+                .attr("stroke-width", d => esSeleccionado(d) ? 2.5 : 1)
+                .attr("opacity", d => esSeleccionado(d) ? 1 : 0.85)
                 .style("cursor", "pointer");
 
             puntos.append("title")
@@ -1079,11 +1037,60 @@
             
             d3.select("#overview-detalle").text(
                 itemSeleccionadoOverview
-                    ? `${itemSeleccionadoOverview.Bebida}: Promedio ` +
+                    ? `Seleccionado: ${itemSeleccionadoOverview.Bebida} — Promedio de ` +
                       `${Number(itemSeleccionadoOverview["Sugars (g)"]).toFixed(1)} g de azúcar | ` +
                       `${Number(itemSeleccionadoOverview["Calories (Cal)"]).toFixed(1)} Cal`
-                    : "Selecciona una bebida para explorar sus datos."
+                    : "Selecciona una bebida en el gráfico o en la barra lateral."
             );
+        }
+
+        function actualizarPanelMetricasUI() {
+            if (!estadoActual.datosFinales) return;
+            const gramos = Number(estadoActual.datosFinales['Sugars (g)']) || 0;
+            const pctOms = (gramos / 50) * 100;
+            const cucharadas = (gramos / 4).toFixed(1);
+
+            document.getElementById('metricas-panel').style.opacity = 1;
+            document.getElementById('valor-azucar').innerText = `${Math.round(gramos)}g`;
+            document.getElementById('equivalencia-cucharadas').innerText = `${cucharadas} cucharaditas 🥄`;
+            
+            const barraFill = document.getElementById('fill-impacto');
+            barraFill.style.width = Math.min(pctOms, 100) + "%";
+            
+            const colorLiquido = d3.scaleLinear().domain([0, 50]).range(["#ffffff", "#ff4757"]).clamp(true);
+            const targetColor = colorLiquido(gramos);
+            barraFill.style.background = targetColor;
+            document.getElementById('valor-azucar').style.color = targetColor;
+
+            document.getElementById('pct-impacto').innerText = `${Math.round(pctOms)}% del límite diario`;
+
+            // Control Aura Roja Perimetral si supera 50g
+            const auraOverlay = document.getElementById('aura-peligro-overlay');
+            if (gramos >= 50) {
+                const excesoPct = Math.min(Math.max((gramos - 50) / 40, 0), 1);
+                const opacidadAura = 0.20 + (excesoPct * 0.35);
+                const blurAura = Math.round(20 + (excesoPct * 40));
+                const spreadAura = Math.round(5 + (excesoPct * 15));
+
+                auraOverlay.style.boxShadow = `inset 0 0 ${blurAura}px ${spreadAura}px rgba(250, 48, 72, ${opacidadAura})`;
+                auraOverlay.style.opacity = 1;
+            } else {
+                auraOverlay.style.opacity = 0;
+                auraOverlay.style.boxShadow = `inset 0 0 0 0 rgba(250, 48, 72, 0)`;
+            }
+
+            const alertaOms = document.getElementById('alerta-oms');
+            if (gramos >= 50) {
+                alertaOms.style.display = 'block';
+                alertaOms.className = 'alerta-oms alerta-peligro';
+                alertaOms.innerText = '⚠️ Supera el límite diario de la OMS (50g).';
+            } else if (gramos > 25) {
+                alertaOms.style.display = 'block';
+                alertaOms.className = 'alerta-oms alerta-precaucion';
+                alertaOms.innerText = '⚠️ Supera la cantidad ideal (25g).';
+            } else {
+                alertaOms.style.display = 'none';
+            }
         }
 
         /* --- RELOJ ENERGÉTICO EN 180° --- */
@@ -1094,9 +1101,9 @@
             contenedor.selectAll("*").remove();
 
             const w = 180;
-            const h = 95;
-            const rExterior = 70;
-            const rInterior = 50;
+            const h = 85;
+            const rExterior = 65;
+            const rInterior = 45;
 
             svgReloj = contenedor.append("svg")
                 .attr("viewBox", `0 0 ${w} ${h}`)
@@ -1106,17 +1113,13 @@
             const defs = svgReloj.append("defs");
             const gradiente = defs.append("linearGradient")
                 .attr("id", "gradiente-reloj-daltonico")
-                .attr("x1", "0%")
-                .attr("y1", "0%")
-                .attr("x2", "100%")
-                .attr("y2", "0%");
+                .attr("x1", "0%").attr("y1", "0%").attr("x2", "100%").attr("y2", "0%");
 
             gradiente.append("stop").attr("offset", "0%").attr("stop-color", "#38bdf8");   
             gradiente.append("stop").attr("offset", "45%").attr("stop-color", "#EAC784");  
             gradiente.append("stop").attr("offset", "100%").attr("stop-color", "#c026d3"); 
 
-            const g = svgReloj.append("g")
-                .attr("transform", `translate(${w / 2}, ${h - 12})`);
+            const g = svgReloj.append("g").attr("transform", `translate(${w / 2}, ${h - 10})`);
 
             const arcGen = d3.arc()
                 .innerRadius(rInterior)
@@ -1132,25 +1135,15 @@
                 .attr("stroke-width", 1.2);
 
             g.append("text").attr("x", -rExterior - 3).attr("y", -1)
-                .attr("fill", "#f0e6dc").attr("font-size", 8.5).attr("font-weight", "600").attr("text-anchor", "end").text("0");
+                .attr("fill", "#f0e6dc").attr("font-size", 8).attr("font-weight", "600").attr("text-anchor", "end").text("0");
             g.append("text").attr("x", rExterior + 3).attr("y", -1)
-                .attr("fill", "#f0e6dc").attr("font-size", 8.5).attr("font-weight", "600").attr("text-anchor", "start").text("500+");
+                .attr("fill", "#f0e6dc").attr("font-size", 8).attr("font-weight", "600").attr("text-anchor", "start").text("500+");
 
             agujaReloj = g.append("g").attr("class", "aguja-grupo");
 
-            agujaReloj.append("polygon")
-                .attr("points", "0,-62 -3,0 3,0")
-                .attr("fill", "#ffffff")
-                .attr("stroke", "#24160c")
-                .attr("stroke-width", 1);
-
-            agujaReloj.append("circle")
-                .attr("r", 5.5)
-                .attr("fill", "#ffffff");
-
-            agujaReloj.append("circle")
-                .attr("r", 2.5)
-                .attr("fill", "#0B421A");
+            agujaReloj.append("polygon").attr("points", "0,-55 -3,0 3,0").attr("fill", "#ffffff").attr("stroke", "#24160c").attr("stroke-width", 1);
+            agujaReloj.append("circle").attr("r", 5).attr("fill", "#ffffff");
+            agujaReloj.append("circle").attr("r", 2).attr("fill", "#0B421A");
 
             agujaReloj.attr("transform", "rotate(-90)");
             anguloActualReloj = -90;
@@ -1196,90 +1189,12 @@
             }
         }
 
-        /* --- Inicialización del Vaso D3 con Líneas OMS --- */
-        function inicializarD3() {
-            d3.select("#vaso-svg").remove();
-
-            const container = document.getElementById('viz-container');
-            const w = container.clientWidth;
-            const h = container.clientHeight;
-
-            svg = d3.select("#viz-container").append("svg")
-                .attr("id", "vaso-svg")
-                .attr("width", w).attr("height", h)
-                .style("position", "absolute")
-                .style("top", "0")
-                .style("left", "0");
-
-            const centerX = w / 2;
-            const centerY = h / 2 + 35;
-
-            const xTopLeft = centerX - cupWidthTop / 2;
-            const xTopRight = centerX + cupWidthTop / 2;
-            const xBottomLeft = centerX - cupWidthBottom / 2;
-            const xBottomRight = centerX + cupWidthBottom / 2;
-            const yTop = centerY - cupHeight / 2;
-            const yBottom = centerY + cupHeight / 2;
-
-            const polygonPoints = `${xBottomLeft},${yBottom} ${xTopLeft},${yTop} ${xTopRight},${yTop} ${xBottomRight},${yBottom}`;
-
-            svg.append("defs").append("clipPath")
-                .attr("id", "cup-clip")
-                .append("polygon")
-                .attr("points", polygonPoints);
-
-            cupFill = svg.append("rect")
-                .attr("x", xTopLeft)
-                .attr("y", yBottom)
-                .attr("width", cupWidthTop)
-                .attr("height", 0)
-                .attr("fill", "#ffffff")
-                .attr("clip-path", "url(#cup-clip)");
-
-            svg.append("polygon")
-                .attr("points", polygonPoints)
-                .attr("fill", "none")
-                .attr("stroke", "rgba(255,255,255,0.92)")
-                .attr("stroke-width", 3.8)
-                .attr("stroke-linejoin", "round");
-                
-            svg.append("polygon")
-                .attr("points", `${xTopLeft + 12},${yTop + 10} ${xTopLeft + 25},${yTop + 10} ${xBottomLeft + 25},${yBottom - 10} ${xBottomLeft + 12},${yBottom - 10}`)
-                .attr("fill", "rgba(255,255,255,0.12)");
-
-            const h25 = alturaParaAzucar(25);
-            const y25 = yBottom - h25;
-            svg.append("line").attr("class", "oms-line-25")
-                .attr("x1", xTopLeft - 20).attr("x2", xTopRight + 20)
-                .attr("y1", y25).attr("y2", y25);
-                
-            svg.append("text").attr("class", "oms-label-25")
-                .attr("x", xTopRight + 25).attr("y", y25 + 4)
-                .text("OMS IDEAL (25g)");
-
-            const h50 = alturaParaAzucar(50);
-            const y50 = yBottom - h50;
-            svg.append("line").attr("class", "oms-line-50")
-                .attr("x1", xTopLeft - 20).attr("x2", xTopRight + 20)
-                .attr("y1", y50).attr("y2", y50);
-                
-            svg.append("text").attr("class", "oms-label-50")
-                .attr("x", xTopRight + 25).attr("y", y50 + 4)
-                .text("LÍMITE OMS (50g)");
-
-            gTerrones = svg.append("g").attr("clip-path", "url(#cup-clip)");
-        }
-
         window.addEventListener('resize', () => {
-            inicializarD3();
-            actualizarVasoD3();
             renderizarOverview();
-            inicializarRelojEnergetico();
-            actualizarRelojEnergetico();
         });
 
         // =========================================================================
-        // REPRODUCCIÓN SONORA BASADA EN DURACIONES EQUIVALENTES
+        // REPRODUCCIÓN SONORA EQUIVALENTE
         // =========================================================================
         async function reproducirSonidos(datos) {
             if (Tone.context.state !== 'running') await Tone.start();
@@ -1289,134 +1204,20 @@
 
             if (glupPlayer.loaded) {
                 glupPlayer.stop();
-
                 if (calorias > 0) {
                     glupPlayer.playbackRate = 1.0;
-                    const escalaDuracionCalorias = d3.scaleLinear()
-                        .domain([1, 500])
-                        .range([1.6, 4.0])
-                        .clamp(true);
-
-                    const duracionCalorias = escalaDuracionCalorias(calorias);
-                    glupPlayer.start(Tone.now(), 0, duracionCalorias);
+                    const escalaDuracionCalorias = d3.scaleLinear().domain([1, 500]).range([1.6, 4.0]).clamp(true);
+                    glupPlayer.start(Tone.now(), 0, escalaDuracionCalorias(calorias));
                 }
             }
 
             if (sugarPlayer.loaded) {
                 sugarPlayer.stop();
-
                 if (gramosAzucar > 0) {
                     sugarPlayer.playbackRate = 1.0;
-                    const escalaDuracionAzucar = d3.scaleLinear()
-                        .domain([1, 80])
-                        .range([1.6, 4.0])
-                        .clamp(true);
-
-                    const duracionAzucar = escalaDuracionAzucar(gramosAzucar);
-                    sugarPlayer.start(Tone.now() + 0.15, 0, duracionAzucar);
+                    const escalaDuracionAzucar = d3.scaleLinear().domain([1, 80]).range([1.6, 4.0]).clamp(true);
+                    sugarPlayer.start(Tone.now() + 0.15, 0, escalaDuracionAzucar(gramosAzucar));
                 }
-            }
-        }
-
-        function actualizarVasoD3() {
-            if (!estadoActual.datosFinales || !cupFill) return;
-
-            const data = estadoActual.datosFinales;
-            const gramosAzucar = Number(data['Sugars (g)']) || 0;
-            const pctOms = (gramosAzucar / 50) * 100;
-            const cucharadas = (gramosAzucar / 4).toFixed(1);
-
-            const container = document.getElementById('viz-container');
-            const h = container.clientHeight;
-            const centerY = h / 2 + 35;
-            const yBottom = centerY + cupHeight / 2;
-
-            const fillHeight = alturaParaAzucar(gramosAzucar);
-            const fillY = yBottom - fillHeight;
-
-            const colorLiquido = d3.scaleLinear().domain([0, 50]).range(["#ffffff", "#ff4757"]).clamp(true);
-            const targetColor = colorLiquido(gramosAzucar);
-
-            cupFill.transition().duration(1200).ease(d3.easeCubicOut)
-                .attr("y", fillY)
-                .attr("height", fillHeight)
-                .attr("fill", targetColor);
-
-            document.getElementById('metricas-panel').style.opacity = 1;
-            
-            const valAzucarNode = document.getElementById('valor-azucar');
-            d3.select(valAzucarNode).transition().duration(1200)
-                .tween("text", function() {
-                    const i = d3.interpolateRound(parseInt(this.textContent) || 0, Math.round(gramosAzucar));
-                    return function(t) { this.textContent = i(t) + "g"; };
-                })
-                .style("color", targetColor);
-
-            document.getElementById('equivalencia-cucharadas').innerText = `${cucharadas} cucharaditas 🥄`;
-            
-            const barraFill = document.getElementById('fill-impacto');
-            barraFill.style.width = Math.min(pctOms, 100) + "%";
-            barraFill.style.background = targetColor;
-            
-            const pctImpactoElem = document.getElementById('pct-impacto');
-            if (pctImpactoElem) {
-                pctImpactoElem.innerText = `${Math.round(pctOms)}% del límite diario`;
-            }
-            
-            const auraOverlay = document.getElementById('aura-peligro-overlay');
-            if (gramosAzucar >= 50) {
-                const excesoPct = Math.min(Math.max((gramosAzucar - 50) / 40, 0), 1);
-                const opacidadAura = 0.20 + (excesoPct * 0.35);
-                const blurAura = Math.round(20 + (excesoPct * 40));
-                const spreadAura = Math.round(5 + (excesoPct * 15));
-
-                auraOverlay.style.boxShadow = `inset 0 0 ${blurAura}px ${spreadAura}px rgba(250, 48, 72, ${opacidadAura})`;
-                auraOverlay.style.opacity = 1;
-            } else {
-                auraOverlay.style.opacity = 0;
-                auraOverlay.style.boxShadow = `inset 0 0 0 0 rgba(250, 48, 72, 0)`;
-            }
-
-            const alertaOms = document.getElementById('alerta-oms');
-            if (gramosAzucar >= 50) {
-                alertaOms.style.display = 'block';
-                alertaOms.className = 'alerta-oms alerta-peligro';
-                alertaOms.innerText = '⚠️ Supera el límite diario de la OMS (50g).';
-            } else if (gramosAzucar > 25) {
-                alertaOms.style.display = 'block';
-                alertaOms.className = 'alerta-oms alerta-precaucion';
-                alertaOms.innerText = '⚠️ Supera la cantidad ideal (25g).';
-            } else {
-                alertaOms.style.display = 'none';
-            }
-
-            animarTerrones(gramosAzucar, yBottom, fillY);
-        }
-
-        function animarTerrones(gramos, yBase, yLiquido) {
-            gTerrones.selectAll("*").remove();
-            if (gramos <= 5) return; 
-
-            const numTerrones = Math.min(Math.round(gramos / 4), 16); 
-            const container = document.getElementById('viz-container');
-            const centerX = container.clientWidth / 2;
-
-            for (let i = 0; i < numTerrones; i++) {
-                const xRandom = centerX - 60 + Math.random() * 120;
-                const delay = Math.random() * 800; 
-
-                const terron = gTerrones.append("rect")
-                    .attr("class", "terron")
-                    .attr("x", xRandom)
-                    .attr("y", -50)
-                    .attr("width", 14).attr("height", 14);
-
-                terron.transition()
-                    .delay(delay)
-                    .duration(800)
-                    .ease(d3.easeBounceOut)
-                    .attr("y", yBase - 14 - (Math.random() * (yBase - yLiquido - 14)))
-                    .transition().duration(2000).style("opacity", 0.1).remove(); 
             }
         }
     </script>
