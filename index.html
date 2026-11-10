@@ -536,12 +536,12 @@
         <div id="sidebar-scroll-content">
             <h2>Arma tu Vaso</h2>
 
-            <!-- BOTÓN CONEXIÓN ARDUINO FÍSICO -->
-            <button id="btn-conectar-arduino" class="opcion-btn" style="background-color: #362415; border-color: #EAC784; color: #EAC784; font-weight: bold; margin-bottom: 12px; text-align: center;">
-                🔌 Conectar Arduino
+            <!-- El Arduino está conectado por USB al computador. Este botón consulta su estado al servidor Python. -->
+            <button id="btn-conectar-arduino" class="opcion-btn" type="button" style="background-color: #362415; border-color: #EAC784; color: #EAC784; font-weight: bold; margin-bottom: 12px; text-align: center;">
+                🔄 Comprobar conexión
             </button>
-            <p id="estado-arduino" class="instrucciones" style="margin-top: 0; margin-bottom: 14px; font-size: 0.78em; color: #c9b8ab;">
-                Arduino desconectado
+            <p id="estado-arduino" role="status" aria-live="polite" class="instrucciones" style="margin-top: 0; margin-bottom: 14px; font-size: 0.78em; color: #c9b8ab;">
+                Comprobando la conexión con el computador...
             </p>
 
             <div class="instrucciones">Configura tu bebida paso a paso y presiona enviar para accionar el vaso físico.</div>
@@ -560,18 +560,21 @@
                 <button class="opcion-btn" disabled>Selecciona un tamaño</button>
             </div>
 
-            <!-- BOTÓN ENVIAR BEBIDA -->
+            <!-- Enviar el pedido solo después de confirmar la bebida. -->
             <div style="margin-top: 24px;">
-                <button id="btn-enviar-bebida" class="opcion-btn" style="background-color: #00704A; border-color: #EAC784; color: #fff; font-weight: bold; width: 100%; text-align: center; padding: 12px; font-size: 1em;">
+                <button id="btn-enviar-bebida" class="opcion-btn" type="button" disabled style="background-color: #00704A; border-color: #EAC784; color: #fff; font-weight: bold; width: 100%; text-align: center; padding: 12px; font-size: 1em;">
                     ☕ Enviar Bebida Física
                 </button>
             </div>
 
-            <!-- BOTÓN DETENER MOTOR -->
+            <!-- IMPORTANTE: 0 g no detiene el motor: pide que vuelva a la posición inicial cuando quede libre. -->
             <div style="margin-top: 8px;">
-                <button id="btn-detener-arduino" class="opcion-btn" style="background-color: #5a2e2e; border-color: #ff4757; color: #ff8b97; width: 100%; text-align: center; padding: 8px; font-size: 0.85em;">
-                    ⏹ Detener Motor Arduino
+                <button id="btn-volver-cero" class="opcion-btn" type="button" disabled style="background-color: #443022; border-color: #EAC784; color: #f5ede6; width: 100%; text-align: center; padding: 8px; font-size: 0.85em;">
+                    ⬇ Volver a 0 g
                 </button>
+                <p class="instrucciones" style="font-size: 0.74em; margin-top: 7px; color: #f0e6dc;">
+                    Este botón no detiene un movimiento en curso. Para una emergencia, corta la alimentación del motor.
+                </p>
             </div>
         </div>
     </div>
@@ -626,53 +629,118 @@
     </div>
 
     <script>
-        // ==========================================
-        // CONEXIÓN CON ARDUINO (WEB SERIAL API)
-        // ==========================================
-        let puertoArduino = null;
-        let escritorArduino = null;
-        const codificadorArduino = new TextEncoder();
+        // ========================================================
+        // TABLET -> FLASK (COMPUTADOR) -> ARDUINO LEONARDO (USB)
+        // Se utiliza el servidor.py y arduino_azucar.ino entregados antes.
+        // No es necesario conectar el Arduino a la tablet.
+        // ========================================================
         const estadoArduino = document.getElementById('estado-arduino');
+        const botonEnviarBebida = document.getElementById('btn-enviar-bebida');
+        const botonVolverCero = document.getElementById('btn-volver-cero');
+        const botonComprobarConexion = document.getElementById('btn-conectar-arduino');
 
-        document.getElementById('btn-conectar-arduino').addEventListener('click', async () => {
-            if (!('serial' in navigator)) {
-                estadoArduino.textContent = 'Tu navegador no soporta Web Serial';
+        let arduinoConectado = false;
+        let arduinoOcupado = false;
+        let arduinoRequiereRevision = false;
+        let enviandoPedido = false;
+
+        function mostrarEstadoArduino(mensaje) {
+            estadoArduino.textContent = mensaje;
+        }
+
+        function actualizarControlesArduino() {
+            const disponible = arduinoConectado && !arduinoOcupado &&
+                               !arduinoRequiereRevision && !enviandoPedido;
+            botonEnviarBebida.disabled = !disponible || !estadoActual.datosFinales;
+            botonVolverCero.disabled = !disponible;
+        }
+
+        async function comprobarConexionArduino() {
+            // GitHub Pages muestra la web, pero no controla el USB del computador.
+            // Debe abrirse mediante el servidor Python en http://IP:5000.
+            if (location.protocol === 'file:' || location.hostname.endsWith('.github.io')) {
+                arduinoConectado = false;
+                mostrarEstadoArduino('Abre esta página desde el servidor Python del computador (http://IP:5000).');
+                actualizarControlesArduino();
+                return;
+            }
+            try {
+                const respuesta = await fetch('/estado', { cache: 'no-store' });
+                if (!respuesta.ok) throw new Error('El servidor no respondió');
+                const datos = await respuesta.json();
+
+                arduinoConectado = Boolean(datos.conectado);
+                arduinoOcupado = Boolean(datos.ocupado);
+                arduinoRequiereRevision = Boolean(datos.requiere_revision);
+
+                if (!enviandoPedido) {
+                    if (arduinoRequiereRevision) {
+                        mostrarEstadoArduino('⚠️ Movimiento sin confirmar: revisa el mecanismo y reinicia Python.');
+                    } else if (!arduinoConectado) {
+                        mostrarEstadoArduino('❌ Arduino desconectado del computador.');
+                    } else if (arduinoOcupado) {
+                        mostrarEstadoArduino('⏳ Arduino ocupado; espera que termine.');
+                    } else {
+                        mostrarEstadoArduino('✅ Arduino conectado al computador y disponible.');
+                    }
+                }
+            } catch (error) {
+                console.error('Error consultando el servidor:', error);
+                arduinoConectado = false;
+                arduinoOcupado = false;
+                if (!enviandoPedido) {
+                    mostrarEstadoArduino('❌ No hay conexión con Python. Comprueba http://IP:5000 en la tablet.');
+                }
+            }
+            actualizarControlesArduino();
+        }
+
+        botonComprobarConexion.addEventListener('click', comprobarConexionArduino);
+
+        // /pedido espera hasta que el Leonardo responda LISTO:<gramos>.
+        async function solicitarMovimientoArduino(gramos) {
+            if (enviandoPedido || !arduinoConectado || arduinoOcupado || arduinoRequiereRevision) {
+                mostrarEstadoArduino('El Arduino no está disponible. Comprueba su estado.');
+                return;
+            }
+            if (!Number.isInteger(gramos) || gramos < 0 || gramos > 84) {
+                mostrarEstadoArduino('❌ Los gramos enviados deben estar entre 0 y 84.');
                 return;
             }
 
-            if (escritorArduino) return;
+            enviandoPedido = true;
+            actualizarControlesArduino();
+            mostrarEstadoArduino(`⏳ Moviendo el mecanismo hasta ${gramos} g...`);
 
             try {
-                puertoArduino = await navigator.serial.requestPort();
-                await puertoArduino.open({ baudRate: 9600 });
-                
-                const textEncoder = new TextEncoderStream();
-                textEncoder.readable.pipeTo(puertoArduino.writable);
-                escritorArduino = textEncoder.writable.getWriter();
-                
-                estadoArduino.textContent = 'Arduino conectado correctamente';
-                document.getElementById('btn-conectar-arduino').style.borderColor = '#00704A';
-                document.getElementById('btn-conectar-arduino').style.color = '#00704A';
+                const respuesta = await fetch('/pedido', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ gramos })
+                });
+                const resultado = await respuesta.json();
+                if (!respuesta.ok) {
+                    throw new Error(resultado.error || 'No se pudo completar el pedido');
+                }
+                mostrarEstadoArduino(`✅ El Arduino terminó la secuencia de ${resultado.gramos} g.`);
             } catch (error) {
-                console.error(error);
-                estadoArduino.textContent = 'No se pudo conectar el Arduino';
+                console.error('Error al enviar el pedido:', error);
+                mostrarEstadoArduino(`❌ ${error.message}. Revisa el mecanismo antes de reintentar.`);
+            } finally {
+                enviandoPedido = false;
+                actualizarControlesArduino();
+                // Actualizar flags de bloqueo sin borrar inmediatamente el resultado.
+                setTimeout(comprobarConexionArduino, 5000);
             }
-        });
+        }
 
-        // Botón para detener el motor
-        document.getElementById('btn-detener-arduino').addEventListener('click', async () => {
-            if (!escritorArduino) {
-                estadoArduino.textContent = 'Arduino no conectado';
+        // Esto NO es una parada de emergencia: 0 g ordena bajar a la base,
+        // y el servidor no acepta la orden mientras haya otro movimiento.
+        botonVolverCero.addEventListener('click', async () => {
+            if (!confirm('¿Quieres volver a la posición de 0 g? Solo puede hacerse cuando el motor está libre. Esto NO detiene un movimiento en curso.')) {
                 return;
             }
-
-            try {
-                await escritorArduino.write(codificadorArduino.encode('0\n'));
-                estadoArduino.textContent = 'Orden de detención enviada';
-            } catch (error) {
-                console.error(error);
-                estadoArduino.textContent = 'Error al detener el motor';
-            }
+            await solicitarMovimientoArduino(0);
         });
 
         const modalOverlay = document.getElementById('modal-overlay');
@@ -837,6 +905,7 @@
             renderizarTamanosVis(tamanosDisp);
             renderizarLechesVis(lechesDisp);
             renderizarOverview();
+            actualizarControlesArduino();
             actualizarPanelMetricasUI();
             actualizarRelojEnergetico();
 
@@ -894,35 +963,49 @@
         }
 
         // ==========================================
-        // ACCIÓN DEL BOTÓN "ENVIAR BEBIDA FÍSICA"
+        // CONFIRMAR BEBIDA Y ENVIAR GRAMOS AL ARDUINO
         // ==========================================
-        document.getElementById('btn-enviar-bebida').addEventListener('click', async () => {
+        botonEnviarBebida.addEventListener('click', async () => {
             if (!estadoActual.datosFinales) {
-                alert("Por favor selecciona una bebida, tamaño y leche primero.");
+                mostrarEstadoArduino('Selecciona primero una bebida, tamaño y leche.');
                 return;
             }
 
-            if (Tone.context.state !== 'running') {
-                await Tone.start();
+            const gramosReales = Number(estadoActual.datosFinales['Sugars (g)']);
+            if (!Number.isFinite(gramosReales) || gramosReales < 0) {
+                mostrarEstadoArduino('❌ La bebida no tiene un valor de azúcar válido.');
+                return;
             }
 
-            reproducirSonidos(estadoActual.datosFinales);
+            // La calibración física del Leonardo admite como máximo 84 gramos.
+            const gramosMotor = Math.max(0, Math.min(84, Math.round(gramosReales)));
+            if (gramosReales > 84) {
+                const confirmado = confirm(
+                    `Esta bebida tiene ${gramosReales} g de azúcar, pero el mecanismo solo llega a 84 g. ¿Quieres representarla con 84 g?`
+                );
+                if (!confirmado) return;
+            }
+
+            // Enviar de inmediato y bloquear nuevos clics antes de iniciar el audio.
+            // Esto evita pedidos duplicados mientras Tone.js prepara el sonido.
+            const movimiento = solicitarMovimientoArduino(gramosMotor);
+            try {
+                if (Tone.context.state !== 'running') await Tone.start();
+                await reproducirSonidos(estadoActual.datosFinales);
+            } catch (error) {
+                console.warn('No se pudieron reproducir los sonidos:', error);
+            }
             actualizarRelojEnergetico();
 
-            if (escritorArduino) {
-                const gramos = Number(estadoActual.datosFinales['Sugars (g)']);
-                if (Number.isFinite(gramos)) {
-                    try {
-                        const mensaje = `${Math.round(gramos)}\n`;
-                        await escritorArduino.write(codificadorArduino.encode(mensaje));
-                        estadoArduino.textContent = `Enviados ${Math.round(gramos)} g al Arduino`;
-                    } catch (error) {
-                        console.error(error);
-                        estadoArduino.textContent = 'Error al enviar datos al Arduino';
-                    }
-                }
-            }
+            await movimiento;
         });
+
+        // Comprobación inicial y después cada 10 segundos.
+        // No se consulta durante un pedido para conservar el mensaje de progreso.
+        comprobarConexionArduino();
+        setInterval(() => {
+            if (!enviandoPedido) comprobarConexionArduino();
+        }, 10000);
 
         /* --- Gráfico Central Protagonista --- */
         function renderizarOverview() {
