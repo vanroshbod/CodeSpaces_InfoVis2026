@@ -254,13 +254,28 @@
             transform: scale(1.02);
         }
 
-        #btn-detener-arduino {
-            background-color: #5a2e2e;
-            border-color: #ff4757;
-            color: #ff8b97;
+        #btn-volver-cero {
+            background-color: #56432f;
+            border-color: var(--sb-gold);
+            color: var(--sb-cream);
         }
-        #btn-detener-arduino:hover:not(:disabled) {
-            background-color: #6e3737;
+        #btn-volver-cero-resultado {
+            background-color: #56432f;
+            border: 1px solid var(--sb-gold);
+            border-radius: 10px;
+            color: var(--sb-cream);
+            padding: 14px 24px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            margin-left: 12px;
+        }
+        #btn-volver-cero-resultado:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+        #btn-volver-cero:hover:not(:disabled) {
+            background-color: #6b5438;
             transform: scale(1.02);
         }
 
@@ -623,8 +638,8 @@
                 <button id="btn-enviar-bebida" class="btn-accion" type="button" disabled>
                     ☕ Hacer pedido
                 </button>
-                <button id="btn-detener-arduino" class="btn-accion" type="button">
-                    ⏹ Detener motor arduino
+                <button id="btn-volver-cero" class="btn-accion" type="button" disabled title="Solicita volver a 0 g cuando el motor no esté ocupado. No es una parada de emergencia.">
+                    ⬇ Volver a 0 g
                 </button>
             </div>
         </div>
@@ -664,6 +679,7 @@
             <!-- Botón Hacer Otro Pedido -->
             <div style="margin-top: 15px;">
                 <button id="btn-otro-pedido" type="button">🔄 Hacer otro pedido</button>
+                <button id="btn-volver-cero-resultado" type="button" disabled title="Regresar el mecanismo a su referencia inferior. No es una parada de emergencia.">⬇ Volver a 0 g</button>
             </div>
         </div>
 
@@ -675,7 +691,8 @@
         // ========================================================
         const estadoArduino = document.getElementById('estado-arduino');
         const botonEnviarBebida = document.getElementById('btn-enviar-bebida');
-        const botonDetenerArduino = document.getElementById('btn-detener-arduino');
+        const botonVolverCero = document.getElementById('btn-volver-cero');
+        const botonVolverCeroResultado = document.getElementById('btn-volver-cero-resultado');
         const botonComprobarConexion = document.getElementById('btn-conectar-arduino');
         const bloqueTamanoLeche = document.getElementById('bloque-tamano-leche');
         const resultadoPedidoContainer = document.getElementById('resultado-pedido-container');
@@ -722,7 +739,12 @@
         function actualizarControlesArduino() {
             const disponible = arduinoConectado && !arduinoOcupado &&
                                !arduinoRequiereRevision && !enviandoPedido;
-            botonEnviarBebida.disabled = !disponible || !estadoActual.datosFinales;
+            botonEnviarBebida.disabled = !disponible || !estadoActual.datosFinales || pedidoRealizado;
+            botonVolverCero.disabled = !disponible;
+            botonVolverCeroResultado.disabled = !disponible;
+            // La selección visual no debe cambiar mientras se ejecuta el pedido físico.
+            document.getElementById('bloque-bebida').style.pointerEvents = enviandoPedido ? 'none' : '';
+            bloqueTamanoLeche.style.pointerEvents = enviandoPedido ? 'none' : '';
         }
 
         async function comprobarConexionArduino() {
@@ -768,11 +790,11 @@
         async function solicitarMovimientoArduino(gramos) {
             if (enviandoPedido || !arduinoConectado || arduinoOcupado || arduinoRequiereRevision) {
                 mostrarEstadoArduino('El Arduino no está disponible.');
-                return;
+                return false;
             }
             if (!Number.isInteger(gramos) || gramos < 0 || gramos > 84) {
                 mostrarEstadoArduino('❌ Los gramos deben estar entre 0 y 84.');
-                return;
+                return false;
             }
 
             enviandoPedido = true;
@@ -786,11 +808,15 @@
                     body: JSON.stringify({ gramos })
                 });
                 const resultado = await respuesta.json();
-                if (!respuesta.ok) throw new Error(resultado.error || 'No se pudo completar el pedido');
+                if (!respuesta.ok || resultado.estado !== 'completado') {
+                    throw new Error(resultado.error || 'El Arduino no confirmó el movimiento');
+                }
                 mostrarEstadoArduino(`✅ Pedido físico de ${resultado.gramos} g completado.`);
+                return true;
             } catch (error) {
                 console.error('Error al enviar el pedido:', error);
-                mostrarEstadoArduino(`❌ ${error.message}.`);
+                mostrarEstadoArduino(`❌ ${error.message}. Revisa el mecanismo antes de repetir.`);
+                return false;
             } finally {
                 enviandoPedido = false;
                 actualizarControlesArduino();
@@ -798,15 +824,20 @@
             }
         }
 
-        botonDetenerArduino.addEventListener('click', async () => {
-            if (!confirm('¿Quieres volver a la posición de 0 g / detener motor?')) return;
+        // El Arduino usa delay(): durante un movimiento, NO atiende comandos de parada.
+        // Enviar 0 g solo pide bajar después de que termina el pedido en curso.
+        async function volverACero() {
+            if (!confirm('¿Volver físicamente a 0 g? Solo es posible con el motor libre; NO es una parada de emergencia.')) return;
             await solicitarMovimientoArduino(0);
-        });
+        }
+        botonVolverCero.addEventListener('click', volverACero);
+        botonVolverCeroResultado.addEventListener('click', volverACero);
 
         btnOtroPedido.addEventListener('click', () => {
             pedidoRealizado = false;
             resultadoPedidoContainer.style.display = 'none';
             document.getElementById('bloque-bebida').style.display = 'block';
+            bloqueTamanoLeche.style.display = 'block';
             document.getElementById('aura-peligro-overlay').style.opacity = 0;
             document.getElementById('banner-peor-caso').style.display = 'none';
             
@@ -818,6 +849,7 @@
             bloqueTamanoLeche.classList.add('bloqueado');
             document.getElementById('search-box').value = '';
             renderizarBebidasVis(Array.from(agrupadoPorBebida.keys()).sort());
+            actualizarControlesArduino();
             actualizarTimeline();
             window.scrollTo({ top: 0, behavior: 'smooth' });
         });
@@ -1026,25 +1058,37 @@
                 return;
             }
 
-            const gramosReales = Number(estadoActual.datosFinales['Sugars (g)']);
+            const datosPedido = estadoActual.datosFinales;
+            const gramosReales = Number(datosPedido['Sugars (g)']);
+            if (!Number.isFinite(gramosReales) || gramosReales < 0) {
+                mostrarEstadoArduino('❌ La bebida no tiene una cantidad de azúcar válida.');
+                return;
+            }
             const gramosMotor = Math.max(0, Math.min(84, Math.round(gramosReales)));
+            if (gramosReales > 84 && !confirm(
+                `La bebida tiene ${gramosReales} g de azúcar, pero el mecanismo llega hasta 84 g. ¿Quieres representarla con 84 g?`
+            )) return;
+
+            // El pedido se realiza realmente al recibir LISTO desde el Arduino.
+            // Se reproduce el sonido durante la espera, sin marcar éxito antes de tiempo.
+            const movimiento = solicitarMovimientoArduino(gramosMotor);
+            try {
+                if (Tone.context.state !== 'running') await Tone.start();
+                await reproducirSonidos(datosPedido);
+            } catch (error) {
+                console.warn('Audio no disponible:', error);
+            }
+            const completado = await movimiento;
+            if (!completado) return;
 
             pedidoRealizado = true;
             document.getElementById('bloque-bebida').style.display = 'none';
             bloqueTamanoLeche.style.display = 'none';
             resultadoPedidoContainer.style.display = 'flex';
+            actualizarControlesArduino();
             actualizarTimeline();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-
-            const movimiento = solicitarMovimientoArduino(gramosMotor);
-            try {
-                if (Tone.context.state !== 'running') await Tone.start();
-                await reproducirSonidos(estadoActual.datosFinales);
-            } catch (error) {
-                console.warn('Audio no disponible:', error);
-            }
             actualizarRelojEnergetico();
-            await movimiento;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         });
 
         comprobarConexionArduino();

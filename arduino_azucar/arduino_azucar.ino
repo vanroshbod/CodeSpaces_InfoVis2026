@@ -1,17 +1,16 @@
+// arduino_azucar.ino — compatible con servidor.py
+// Es tu lógica calibrada, con confirmación serial LISTO:<gramos>.
 #include <Servo.h>
 
 Servo motor;
 
 const int PIN_MOTOR = 5;
-const int VELOCIDAD = 110;         // Velocidad para subir
-const int VELOCIDAD_INVERSA = 75;  // Velocidad para bajar
+const int VELOCIDAD = 75;         // Subir
+const int VELOCIDAD_INVERSA = 105;  // Bajar
 const int DETENIDO = 90;
 
-// DATOS FÍSICOS REALES (se conservan los valores calibrados)
 const float ALTURA_MAX_CM = 15.0;
 const float GRAMOS_MAX = 84.0;
-
-// CALIBRACIÓN
 const float CM_BAJADA_10S = 16.4;
 const float CM_SUBIDA_10S = 15.8;
 const float TIEMPO_PRUEBA_MS = 10000.0;
@@ -22,14 +21,12 @@ const float MS_POR_CM_SUBIR = TIEMPO_PRUEBA_MS / CM_SUBIDA_10S;
 const float MS_POR_GRAMO_BAJAR = CM_POR_GRAMO * MS_POR_CM_BAJAR;
 const float MS_POR_GRAMO_SUBIR = CM_POR_GRAMO * MS_POR_CM_SUBIR;
 
-// IMPORTANTE: al encender, el mecanismo debe estar en 0 g (abajo).
-// El Leonardo no tiene sensor para saber automáticamente la posición.
+// La posición física DEBE comenzar en 0 g; no hay sensor de referencia.
 float gramos = 0;
 
 void setup() {
   Serial.begin(9600);
   Serial.setTimeout(50);
-
   motor.attach(PIN_MOTOR);
   motor.write(DETENIDO);
 }
@@ -41,7 +38,7 @@ void loop() {
   mensaje.trim();
   if (mensaje.length() == 0) return;
 
-  // Aceptar solo números enteros enviados por el servidor.
+  // Validación adicional de la trama serial.
   for (unsigned int i = 0; i < mensaje.length(); i++) {
     if (mensaje[i] < '0' || mensaje[i] > '9') {
       Serial.println("ERROR:Formato invalido");
@@ -56,20 +53,20 @@ void loop() {
   }
 
   if (nuevos_gramos != gramos) {
-    // FASE 1: BAJAR AL FONDO (RESETEAR ERROR)
+    // FASE 1: bajar hasta la referencia inferior.
     if (gramos > 0) {
       unsigned long tiempoBajar = (unsigned long)(gramos * MS_POR_GRAMO_BAJAR);
-      tiempoBajar = (unsigned long)(tiempoBajar * 1.05); // Tu margen de 5 %
+      tiempoBajar = (unsigned long)(tiempoBajar * 1.05); // Margen original de 5%
 
       motor.write(VELOCIDAD_INVERSA);
       delay(tiempoBajar);
-      motor.write(DETENIDO); 
+      motor.write(DETENIDO);
       delay(600);
     }
 
     gramos = nuevos_gramos;
 
-    // FASE 2: SUBIR A LA NUEVA POSICIÓN
+    // FASE 2: subir a la nueva posición.
     if (gramos > 0) {
       unsigned long tiempoSubir = (unsigned long)(gramos * MS_POR_GRAMO_SUBIR);
       motor.write(VELOCIDAD);
@@ -78,8 +75,7 @@ void loop() {
     }
   }
 
-  // Nuevo: avisar al servidor Python que el código terminó el movimiento.
-  // No garantiza posición física exacta: eso requeriría un sensor.
+  // Confirmación de finalización del programa, no de posición física.
   Serial.print("LISTO:");
   Serial.println((int)nuevos_gramos);
 }
