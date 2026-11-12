@@ -3,20 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arma tu Vaso - InfoVis IIC2026</title>
+    <title>Arma tu Vaso - Starbucks InfoVis</title>
     
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
 
     <style>
+        :root {
+            --sb-green: #0B421A;
+            --sb-green-hover: #00704A;
+            --sb-cream: #fffcfe;
+            --sb-gold: #EAC784;
+            --sb-brown-dark: #362415;
+            --sb-brown-bg: #24160c;
+            --sb-gray-bg: #52403d;
+        }
+
         body { 
             margin: 0; 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: #604c4c; 
-            color: #fffcfe; 
-            overflow: hidden; 
+            background-color: var(--sb-green); 
+            color: var(--sb-cream); 
+            overflow-x: hidden; 
             display: flex; 
-            height: 100vh; 
+            flex-direction: column; 
+            min-height: 100vh; 
             position: relative; 
         }
 
@@ -28,82 +39,130 @@
             width: 100vw;
             height: 100vh;
             pointer-events: none;
-            z-index: 50;
+            z-index: 100;
             opacity: 0;
             box-shadow: inset 0 0 0 0 rgba(250, 48, 72, 0);
             transition: opacity 0.8s ease, box-shadow 0.8s ease;
         }
 
-        /* --- Panel de Controles (Sidebar) estilo Espresso Starbucks --- */
-        #sidebar {
-            width: 360px;
-            min-width: 360px;
-            height: 100vh;              
-            max-height: 100vh;          
-            overflow-y: auto !important;
-            overflow-x: hidden;         
-            background-color: #362415; 
-            padding: 25px 15px 0px 25px;
-            box-shadow: 4px 0 20px rgba(0,0,0,0.45); 
-            z-index: 10;
-            display: block;
-            box-sizing: border-box;     
-            scrollbar-width: thin;
-            scrollbar-color: #0B421A #24160c;
-        }
-
-        #sidebar-scroll-content {
+        /* --- Línea de tiempo superior (Timeline tipo Delivery) --- */
+        #timeline-header {
+            position: sticky;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 75px;
+            background-color: var(--sb-brown-bg);
+            border-bottom: 3px solid var(--sb-green-hover);
             display: flex;
-            flex-direction: column;
-            padding-bottom: 80px;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+            padding: 0 20px;
+            z-index: 50;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
             box-sizing: border-box;
         }
 
-        #sidebar::-webkit-scrollbar {
-            width: 10px;
-            display: block !important;
-        }
-        #sidebar::-webkit-scrollbar-track {
-            background: #24160c;
-            border-left: 1px solid #3d281a;
-        }
-        #sidebar::-webkit-scrollbar-thumb {
-            background-color: #0B421A;
-            border-radius: 6px;
-            border: 2px solid #24160c;
-        }
-        #sidebar::-webkit-scrollbar-thumb:hover {
-            background-color: #00704A;
+        .timeline-step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            opacity: 0.45;
+            transition: opacity 0.3s, transform 0.3s;
         }
 
-        #sidebar h2 { 
-            color: #fffcfe; 
-            font-size: 1.35em; 
-            border-bottom: 2px solid #00704A; 
-            padding-bottom: 8px; 
-            margin-top: 0; 
+        .timeline-step.active {
+            opacity: 1;
+            transform: scale(1.04);
         }
+
+        .timeline-step.completed {
+            opacity: 0.85;
+        }
+
+        .timeline-circle {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: var(--sb-brown-dark);
+            color: var(--sb-gold);
+            border: 2px solid var(--sb-gold);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+
+        .timeline-step.active .timeline-circle {
+            background-color: var(--sb-green-hover);
+            color: var(--sb-cream);
+            border-color: var(--sb-cream);
+        }
+
+        .timeline-label {
+            font-size: 0.9em;
+            font-weight: 600;
+            color: var(--sb-cream);
+        }
+
+        /* --- Contenedor Principal de la Interfaz Vertical --- */
+        #main-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px 80px 20px;
+            box-sizing: border-box;
+            gap: 35px;
+            width: 100%;
+            max-width: 650px;
+            margin: 0 auto;
+        }
+
+        /* Bloques de sección estilo tarjeta Starbucks */
+        .seccion-card {
+            background-color: var(--sb-brown-dark);
+            border: 1px solid rgba(234, 199, 132, 0.35);
+            border-radius: 14px;
+            padding: 24px 28px;
+            width: 100%;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+            box-sizing: border-box;
+            transition: opacity 0.3s, border-color 0.3s;
+        }
+
+        .seccion-card.bloqueado {
+            opacity: 0.45;
+            pointer-events: none;
+            filter: grayscale(30%);
+        }
+
         .paso-titulo { 
-            font-size: 1.05em; 
-            color: #EAC784; 
-            margin: 16px 0 8px 0; 
+            font-size: 1.2em; 
+            color: var(--sb-gold); 
+            margin: 0 0 14px 0; 
             font-weight: bold; 
+            border-bottom: 2px solid rgba(234, 199, 132, 0.2);
+            padding-bottom: 8px;
         }
+
         .instrucciones { 
             font-size: 0.88em; 
             color: #f0e6dc; 
-            margin-bottom: 10px; 
+            margin-bottom: 12px; 
             line-height: 1.45; 
         }
 
         #search-box {
             width: 100%; 
-            padding: 10px; 
+            padding: 12px; 
             background-color: #4a3628; 
             border: 1px solid #6b5240;
-            color: #fffcfe; 
-            border-radius: 6px; 
-            margin-bottom: 10px; 
+            color: var(--sb-cream); 
+            border-radius: 8px; 
+            margin-bottom: 12px; 
             box-sizing: border-box; 
             font-size: 0.95em;
             transition: border-color 0.2s;
@@ -113,54 +172,46 @@
         }
         #search-box:focus { 
             outline: none; 
-            border-color: #EAC784; 
+            border-color: var(--sb-gold); 
         }
 
         .lista-opciones {
             display: flex; 
             flex-direction: column; 
             gap: 8px; 
+            max-height: 220px;
+            overflow-y: auto;
             padding-right: 5px;
             scrollbar-width: thin;
-            scrollbar-color: #0B421A #24160c;
-        }
-
-        #lista-bebidas {
-            max-height: 170px;
-            overflow-y: auto;
-        }
-
-        #lista-leches {
-            max-height: 130px;
-            overflow-y: auto;
+            scrollbar-color: var(--sb-green-hover) var(--sb-brown-bg);
         }
 
         .lista-opciones::-webkit-scrollbar { width: 6px; }
-        .lista-opciones::-webkit-scrollbar-track { background: #24160c; border-radius: 4px; }
-        .lista-opciones::-webkit-scrollbar-thumb { background: #0B421A; border-radius: 4px; }
+        .lista-opciones::-webkit-scrollbar-track { background: var(--sb-brown-bg); border-radius: 4px; }
+        .lista-opciones::-webkit-scrollbar-thumb { background: var(--sb-green-hover); border-radius: 4px; }
 
         .opcion-btn {
             background-color: #443022; 
             border: 1px solid #5a4231; 
-            color: #f5ede6; 
-            padding: 10px;
+            color: var(--sb-cream); 
+            padding: 12px 14px;
             text-align: left; 
-            border-radius: 6px; 
+            border-radius: 8px; 
             cursor: pointer; 
             transition: all 0.2s; 
-            font-size: 0.88em;
+            font-size: 0.92em;
             font-weight: 500;
         }
         .opcion-btn:hover:not(:disabled) { 
             background-color: #553e2d; 
-            border-color: #EAC784; 
+            border-color: var(--sb-gold); 
             color: #fff;
         }
         .opcion-btn.active { 
-            background-color: #00704A; 
+            background-color: var(--sb-green-hover); 
             color: #fff; 
             font-weight: bold; 
-            border-color: #EAC784; 
+            border-color: var(--sb-gold); 
         }
         .opcion-btn:disabled { 
             opacity: 0.35; 
@@ -170,81 +221,102 @@
         .grid-opciones {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px; 
+            gap: 10px; 
         }
 
-        /* --- Panel Central Sin Superposiciones --- */
-        #viz-container { 
-            flex: 1; 
-            position: relative; 
-            overflow: hidden;
-            background: radial-gradient(circle at center, #725b5b 0%, #604c4c 100%);
+        /* --- Panel de Acciones Finales (Botones Hacer Pedido / Detener) --- */
+        #acciones-container {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            margin-top: 10px;
         }
 
-        /* Cabecera superior izquierda reubicada para evitar choque con métricas */
-        #viz-header { 
-            position: absolute; 
-            top: 25px; 
-            left: 35px; 
-            right: 280px; 
-            z-index: 20; 
-            pointer-events: none;
-        }
-        .viz-title { 
-            color: #fffcfe; 
-            font-size: 1.7em; 
-            font-weight: 800; 
-            margin: 0 0 6px 0; 
-            line-height: 1.15; 
-            text-shadow: 0 2px 8px rgba(0,0,0,0.4);
-        }
-        .viz-title span { 
-            color: #EAC784; 
-        }
-        .viz-subtitle { 
-            color: #f3ede6; 
-            font-size: 0.9em; 
-            line-height: 1.4; 
-            margin: 0; 
-            text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+        .btn-accion {
+            flex: 1;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+            border: 1px solid var(--sb-gold);
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
 
-        /* Panel métricas de azúcar superior derecho (Ajustado) */
+        #btn-enviar-bebida {
+            background-color: var(--sb-green-hover);
+            color: var(--sb-cream);
+        }
+        #btn-enviar-bebida:hover:not(:disabled) {
+            background-color: #008f5d;
+            transform: scale(1.02);
+        }
+
+        #btn-detener-arduino {
+            background-color: #5a2e2e;
+            border-color: #ff4757;
+            color: #ff8b97;
+        }
+        #btn-detener-arduino:hover:not(:disabled) {
+            background-color: #6e3737;
+            transform: scale(1.02);
+        }
+
+        /* --- Vista Post-Pedido (Paneles Lado a Lado) --- */
+        #resultado-pedido-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+            width: 100%;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        #paneles-resultado-row {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* Panel métrica de azúcar */
         #metricas-panel {
-            position: absolute; 
-            top: 135px; 
-            right: 25px; 
-            background: rgba(54, 36, 21, 0.94);
-            padding: 14px 16px; 
-            border-radius: 12px; 
-            border: 1px solid rgba(234, 199, 132, 0.3);
+            background: var(--sb-brown-dark);
+            padding: 24px; 
+            border-radius: 14px; 
+            border: 1px solid rgba(234, 199, 132, 0.4);
             box-shadow: 0 12px 32px rgba(0,0,0,0.55); 
-            width: 220px; 
-            opacity: 0; 
-            transition: opacity 0.3s;
-            z-index: 20;
+            width: 300px; 
             box-sizing: border-box;
         }
         .metrica-valor {
-            font-size: 2.2em;
+            font-size: 2.5em;
             font-weight: bold;
-            margin: 4px 0;
+            margin: 6px 0;
             line-height: 1; 
         }
         .metrica-label {
-            font-size: 0.75em;
+            font-size: 0.78em;
             color: #f0e6dc;
             text-transform: uppercase;
             letter-spacing: 1px;
             font-weight: 600;
         }
         .alerta-oms {
-            padding: 6px 8px;
-            margin-top: 8px;
-            font-size: 0.75em;
+            padding: 8px 10px;
+            margin-top: 12px;
+            font-size: 0.78em;
             display: none;
             font-weight: bold;
-            border-radius: 4px;
+            border-radius: 6px;
             line-height: 1.3;
         }
         .alerta-precaucion {
@@ -258,84 +330,21 @@
             color: #ff8b97;
         }
 
-        /* --- GRÁFICO CENTRAL PROTAGONISTA (Sin choques) --- */
-        #overview-panel {
-            position: absolute;
-            left: 35px;
-            top: 135px;
-            width: calc(100% - 300px);
-            max-width: 580px;
-            height: calc(100vh - 225px);
-            max-height: 480px;
-            box-sizing: border-box;
-            padding: 18px 22px;
-            background: rgba(54, 36, 21, 0.94);
-            border: 1px solid rgba(234, 199, 132, 0.4);
-            border-radius: 16px;
-            box-shadow: 0 16px 40px rgba(0,0,0,0.65);
-            z-index: 20;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #overview-panel h3 {
-            margin: 0 0 2px;
-            color: #EAC784;
-            font-size: 1.15em;
-        }
-
-        #overview-panel p {
-            margin: 0 0 10px;
-            color: #f0e6dc;
-            font-size: 0.82em;
-        }
-
-        #overview-grafico {
-            flex: 1;
-            width: 100%;
-            position: relative;
-            min-height: 0;
-        }
-
-        #overview-grafico svg {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-
-        #overview-detalle {
-            margin-top: 8px;
-            color: #fffcfe;
-            font-size: 0.85em;
-            line-height: 1.35;
-            font-weight: 600;
-            background: rgba(36, 22, 12, 0.6);
-            padding: 8px 12px;
-            border-radius: 8px;
-            border-left: 4px solid #00704A;
-        }
-
-        /* --- Tarjeta Reloj Energético (180°) - Derecha Inferior --- */
+        /* Tarjeta Reloj Energético */
         #reloj-panel {
-            position: absolute;
-            right: 25px;
-            bottom: 75px;
-            width: 220px;
-            background: rgba(54, 36, 21, 0.94);
-            border: 1px solid rgba(234, 199, 132, 0.3);
-            border-radius: 12px;
-            padding: 12px 14px;
+            width: 300px;
+            background: var(--sb-brown-dark);
+            border: 1px solid rgba(234, 199, 132, 0.4);
+            border-radius: 14px;
+            padding: 24px;
             box-shadow: 0 12px 30px rgba(0,0,0,0.55);
-            z-index: 20;
             box-sizing: border-box;
-            opacity: 0;
-            transition: opacity 0.3s;
         }
 
         #reloj-panel h3 {
-            margin: 0 0 2px 0;
-            color: #EAC784;
-            font-size: 0.82em;
+            margin: 0 0 8px 0;
+            color: var(--sb-gold);
+            font-size: 0.85em;
             text-transform: uppercase;
             letter-spacing: 1px;
             display: flex;
@@ -345,7 +354,7 @@
 
         #reloj-grafico {
             width: 100%;
-            height: 85px;
+            height: 95px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -359,50 +368,68 @@
 
         .reloj-stats {
             text-align: center;
-            margin-top: -6px;
+            margin-top: -4px;
         }
 
         .reloj-cal-val {
-            font-size: 1.45em;
+            font-size: 1.8em;
             font-weight: 800;
-            color: #fffcfe;
+            color: var(--sb-cream);
             line-height: 1.1;
         }
 
         .reloj-sub {
-            font-size: 0.72em;
+            font-size: 0.78em;
             color: #f0e6dc;
-            margin-top: 2px;
+            margin-top: 4px;
         }
 
         .reloj-ejercicio {
-            margin-top: 5px;
-            padding-top: 5px;
+            margin-top: 10px;
+            padding-top: 8px;
             border-top: 1px solid #4d3627;
-            font-size: 0.74em;
-            color: #EAC784;
+            font-size: 0.8em;
+            color: var(--sb-gold);
             text-align: center;
             font-weight: 600;
         }
 
-        /* Cartel Alerta Peor Caso Ubicado Abajo */
+        /* Botón Hacer Otro Pedido */
+        #btn-otro-pedido {
+            background-color: var(--sb-green-hover);
+            color: var(--sb-cream);
+            border: 1px solid var(--sb-gold);
+            padding: 14px 32px;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.4);
+        }
+        #btn-otro-pedido:hover {
+            background-color: #008f5d;
+            transform: scale(1.04);
+        }
+
+        /* Cartel Alerta Peor Caso Inferior */
         @keyframes pulse-alerta {
             0% { transform: translateX(-50%) scale(1); box-shadow: 0 0 18px rgba(255, 71, 87, 0.5); }
             50% { transform: translateX(-50%) scale(1.02); box-shadow: 0 0 28px rgba(255, 71, 87, 0.9); }
             100% { transform: translateX(-50%) scale(1); box-shadow: 0 0 18px rgba(255, 71, 87, 0.5); }
         }
         #banner-peor-caso {
-            position: absolute;
-            bottom: 15px;
-            left: calc(180px + (100vw - 360px) / 2);
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
             transform: translateX(-50%);
-            z-index: 30;
+            z-index: 110;
             background: rgba(45, 12, 12, 0.96);
             border: 2px solid #ff4757;
             border-radius: 8px;
-            padding: 8px 18px;
+            padding: 10px 22px;
             color: #ff8b97;
-            font-size: 0.88em;
+            font-size: 0.92em;
             font-weight: 800;
             letter-spacing: 0.5px;
             text-align: center;
@@ -410,22 +437,23 @@
             pointer-events: none;
             display: none;
             white-space: nowrap;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.6);
         }
 
         /* Botón flotante de Información (i) */
         #btn-info-modal {
-            position: absolute;
-            top: 8px;
-            right: 20px;
-            z-index: 25;
-            background-color: #362415;
-            color: #EAC784;
-            border: 1px solid #EAC784;
-            width: 35px;
-            height: 35px;
+            position: fixed;
+            top: 20px;
+            right: 25px;
+            z-index: 120;
+            background-color: var(--sb-brown-dark);
+            color: var(--sb-gold);
+            border: 1px solid var(--sb-gold);
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             cursor: pointer;
-            font-size: 1.1em;
+            font-size: 1.15em;
             font-weight: bold;
             display: flex;
             align-items: center;
@@ -434,9 +462,9 @@
             transition: all 0.2s;
         }
         #btn-info-modal:hover {
-            background-color: #00704A;
-            border-color: #00704A;
-            color: #fff;
+            background-color: var(--sb-green-hover);
+            border-color: var(--sb-cream);
+            color: var(--sb-cream);
             transform: scale(1.08);
         }
 
@@ -457,10 +485,10 @@
             box-sizing: border-box;
         }
         #modal-card {
-            background-color: #362415;
-            color: #fffcfe;
-            border: 1px solid #604c4c;
-            border-radius: 12px;
+            background-color: var(--sb-brown-dark);
+            color: var(--sb-cream);
+            border: 1px solid var(--sb-gold);
+            border-radius: 14px;
             max-width: 760px;
             width: 100%;
             max-height: 90vh;
@@ -469,35 +497,61 @@
             box-shadow: 0 14px 40px rgba(0,0,0,0.85);
             box-sizing: border-box;
         }
-        #modal-card h1 { color: #fffcfe; font-size: 1.45em; margin-top: 0; border-bottom: 2px solid #00704A; padding-bottom: 8px; }
-        #modal-card h2 { color: #EAC784; font-size: 1.15em; margin-top: 18px; }
+        #modal-card h1 { color: var(--sb-cream); font-size: 1.45em; margin-top: 0; border-bottom: 2px solid var(--sb-green-hover); padding-bottom: 8px; }
+        #modal-card h2 { color: var(--sb-gold); font-size: 1.15em; margin-top: 18px; }
         #modal-card p { line-height: 1.6; color: #f0e6dc; font-size: 0.95em; }
-        #modal-card a { color: #EAC784; text-decoration: none; font-weight: 600; }
+        #modal-card a { color: var(--sb-gold); text-decoration: none; font-weight: 600; }
         #modal-card a:hover { text-decoration: underline; }
         .modal-imagen { max-width: 100%; height: auto; display: block; margin: 1.5rem auto; border-radius: 8px; }
 
         .modal-nav-group { display: flex; gap: 12px; margin-top: 25px; }
         .btn-modal-nav {
-            flex: 1; padding: 12px; background-color: #4a3628; color: #EAC784;
-            border: 1px solid #EAC784; border-radius: 6px; text-align: center;
+            flex: 1; padding: 12px; background-color: #4a3628; color: var(--sb-gold);
+            border: 1px solid var(--sb-gold); border-radius: 8px; text-align: center;
             text-decoration: none; font-weight: bold; font-size: 0.95em;
             transition: all 0.2s; box-sizing: border-box; display: inline-block;
         }
-        .btn-modal-nav:hover { background-color: #00704A; border-color: #00704A; color: #fff; }
+        .btn-modal-nav:hover { background-color: var(--sb-green-hover); border-color: var(--sb-cream); color: #fff; }
 
         #btn-modal-ok {
-            display: block; width: 100%; padding: 12px; background-color: #00704A;
+            display: block; width: 100%; padding: 12px; background-color: var(--sb-green-hover);
             color: #fff; font-size: 1em; font-weight: bold; text-align: center;
-            border: none; border-radius: 6px; cursor: pointer; margin-top: 12px;
+            border: none; border-radius: 8px; cursor: pointer; margin-top: 12px;
             transition: background-color 0.2s;
         }
-        #btn-modal-ok:hover { background-color: #0B421A; }
+        #btn-modal-ok:hover { background-color: #008f5d; }
     </style>
 </head>
 <body>
 
     <!-- CAPA DEL AURA ROJA PERIMETRAL -->
     <div id="aura-peligro-overlay"></div>
+
+    <!-- BANNER ALERTA PEOR CASO -->
+    <div id="banner-peor-caso"></div>
+
+    <!-- BOTÓN FLOTANTE INFORMACIÓN (i) -->
+    <button id="btn-info-modal" title="Información del Proyecto">i</button>
+
+    <!-- LÍNEA DE TIEMPO SUPERIOR (DELIVERY STYLE) -->
+    <div id="timeline-header">
+        <div id="t-step-1" class="timeline-step active">
+            <div class="timeline-circle">1</div>
+            <div class="timeline-label">Conexión Arduino</div>
+        </div>
+        <div id="t-step-2" class="timeline-step">
+            <div class="timeline-circle">2</div>
+            <div class="timeline-label">Elige tu bebida</div>
+        </div>
+        <div id="t-step-3" class="timeline-step">
+            <div class="timeline-circle">3</div>
+            <div class="timeline-label">Tamaño y Leche</div>
+        </div>
+        <div id="t-step-4" class="timeline-step">
+            <div class="timeline-circle">4</div>
+            <div class="timeline-label">Haz tu pedido!</div>
+        </div>
+    </div>
 
     <!-- MODAL / CARD INFORMATIVA -->
     <div id="modal-overlay">
@@ -531,118 +585,135 @@
         </div>
     </div>
 
-    <!-- PANEL LATERAL CON ENVOLTORIO INTERNO -->
-    <div id="sidebar">
-        <div id="sidebar-scroll-content">
-            <h2>Arma tu Vaso</h2>
+    <!-- CONTENEDOR PRINCIPAL VERTICAL -->
+    <div id="main-container">
 
-            <!-- El Arduino está conectado por USB al computador. Este botón consulta su estado al servidor Python. -->
-            <button id="btn-conectar-arduino" class="opcion-btn" type="button" style="background-color: #362415; border-color: #EAC784; color: #EAC784; font-weight: bold; margin-bottom: 12px; text-align: center;">
+        <!-- PASO 1: CONEXIÓN ARDUINO -->
+        <div class="seccion-card">
+            <div class="paso-titulo">1. Conexión Arduino</div>
+            <button id="btn-conectar-arduino" class="opcion-btn" type="button" style="background-color: var(--sb-brown-dark); border-color: var(--sb-gold); color: var(--sb-gold); font-weight: bold; margin-bottom: 8px; text-align: center; width: 100%;">
                 🔄 Comprobar conexión
             </button>
-            <p id="estado-arduino" role="status" aria-live="polite" class="instrucciones" style="margin-top: 0; margin-bottom: 14px; font-size: 0.78em; color: #c9b8ab;">
+            <p id="estado-arduino" role="status" aria-live="polite" class="instrucciones" style="margin-top: 0; margin-bottom: 0; font-size: 0.82em; color: #c9b8ab; text-align: center;">
                 Comprobando la conexión con el computador...
             </p>
+        </div>
 
-            <div class="instrucciones">Configura tu bebida paso a paso y presiona enviar para accionar el vaso físico.</div>
-
-            <div class="paso-titulo">1. Elige tu Bebida</div>
+        <!-- PASO 2: ELIGE TU BEBIDA -->
+        <div id="bloque-bebida" class="seccion-card">
+            <div class="paso-titulo">2. Elige tu Bebida</div>
             <input type="text" id="search-box" placeholder="Ej: Frappuccino, Latte, Mocha...">
             <div id="lista-bebidas" class="lista-opciones"></div>
+        </div>
 
-            <div class="paso-titulo">2. Tamaño</div>
-            <div id="lista-tamanos" class="grid-opciones">
+        <!-- PASO 3: TAMAÑO Y TIPO DE LECHE (BLOQUEADO HASTA ELEGIR BEBIDA) -->
+        <div id="bloque-tamano-leche" class="seccion-card bloqueado">
+            <div class="paso-titulo">3. Tamaño del Vaso</div>
+            <div id="lista-tamanos" class="grid-opciones" style="margin-bottom: 20px;">
                 <button class="opcion-btn" disabled>Selecciona una bebida</button>
             </div>
 
-            <div class="paso-titulo">3. Tipo de Leche</div>
-            <div id="lista-leches" class="lista-opciones">
+            <div class="paso-titulo">Tipo de Leche</div>
+            <div id="lista-leches" class="lista-opciones" style="max-height: 150px;">
                 <button class="opcion-btn" disabled>Selecciona un tamaño</button>
             </div>
 
-            <!-- Enviar el pedido solo después de confirmar la bebida. -->
-            <div style="margin-top: 24px;">
-                <button id="btn-enviar-bebida" class="opcion-btn" type="button" disabled style="background-color: #00704A; border-color: #EAC784; color: #fff; font-weight: bold; width: 100%; text-align: center; padding: 12px; font-size: 1em;">
-                    ☕ Enviar Bebida Física
+            <!-- BOTONES DE ACCIÓN FINAL -->
+            <div id="acciones-container" style="margin-top: 25px;">
+                <button id="btn-enviar-bebida" class="btn-accion" type="button" disabled>
+                    ☕ Hacer pedido
+                </button>
+                <button id="btn-detener-arduino" class="btn-accion" type="button">
+                    ⏹ Detener motor arduino
                 </button>
             </div>
+        </div>
 
-            <!-- IMPORTANTE: 0 g no detiene el motor: pide que vuelva a la posición inicial cuando quede libre. -->
-            <div style="margin-top: 8px;">
-                <button id="btn-volver-cero" class="opcion-btn" type="button" disabled style="background-color: #443022; border-color: #EAC784; color: #f5ede6; width: 100%; text-align: center; padding: 8px; font-size: 0.85em;">
-                    ⬇ Volver a 0 g
-                </button>
-                <p class="instrucciones" style="font-size: 0.74em; margin-top: 7px; color: #f0e6dc;">
-                    Este botón no detiene un movimiento en curso. Para una emergencia, corta la alimentación del motor.
-                </p>
+        <!-- VISTA POST-PEDIDO (PANELES LADO A LADO) -->
+        <div id="resultado-pedido-container">
+            <div id="paneles-resultado-row">
+                <!-- Panel Métrica de Azúcar -->
+                <div id="metricas-panel">
+                    <div class="metrica-label">Contenido de Azúcar</div>
+                    <div id="valor-azucar" class="metrica-valor" style="color: var(--sb-cream);">0g</div>
+                    <div id="equivalencia-cucharadas" style="color: #f0e6dc; font-size: 0.82em; margin-bottom: 10px;">0 cucharaditas 🥄</div>
+                    
+                    <div class="metrica-label">Impacto vs Máximo OMS</div>
+                    <div id="barra-impacto" style="width: 100%; height: 6px; background: #24160c; border-radius: 4px; overflow: hidden; margin-top: 4px;">
+                        <div id="fill-impacto" style="width: 0%; height: 100%; background: #ff4757; transition: width 0.5s, background 0.5s;"></div>
+                    </div>
+                    <div id="pct-impacto" style="text-align: right; font-size: 0.75em; color: #f0e6dc; margin-top: 3px;">0% del límite diario</div>
+
+                    <div id="alerta-oms" class="alerta-oms"></div>
+                </div>
+
+                <!-- Reloj Energético (Calorías) -->
+                <div id="reloj-panel">
+                    <h3><span>Reloj Energético</span> <span>⚡</span></h3>
+                    <div id="reloj-grafico"></div>
+                    <div class="reloj-stats">
+                        <div id="reloj-calorias" class="reloj-cal-val">0 Cal</div>
+                        <div id="reloj-pct-diario" class="reloj-sub">0% dieta (2.000 kcal)</div>
+                    </div>
+                    <div id="reloj-actividad" class="reloj-ejercicio">
+                        🏃 Requiere ~0 min de trote
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botón Hacer Otro Pedido -->
+            <div style="margin-top: 15px;">
+                <button id="btn-otro-pedido" type="button">🔄 Hacer otro pedido</button>
             </div>
         </div>
-    </div>
 
-    <div id="viz-container">
-        <!-- Banner de advertencia del peor caso restaurado abajo -->
-        <div id="banner-peor-caso"></div>
-
-        <!-- Botón flotante (i) -->
-        <button id="btn-info-modal" title="Información del Proyecto">i</button>
-
-        <div id="viz-header">
-            <h1 class="viz-title">Explorador Nutricional de <span>Starbucks</span></h1>
-            <p class="viz-subtitle">Selecciona una bebida en el gráfico para analizar su azúcar y calorías, y envíala a tu dispositivo físico.</p>
-        </div>
-
-        <!-- Panel métricas de azúcar superior derecho -->
-        <div id="metricas-panel">
-            <div class="metrica-label">Contenido de Azúcar</div>
-            <div id="valor-azucar" class="metrica-valor" style="color: #fffcfe;">0g</div>
-            <div id="equivalencia-cucharadas" style="color: #f0e6dc; font-size: 0.82em; margin-bottom: 10px;">0 cucharaditas 🥄</div>
-            
-            <div class="metrica-label">Impacto vs Máximo OMS</div>
-            <div id="barra-impacto" style="width: 100%; height: 6px; background: #24160c; border-radius: 4px; overflow: hidden; margin-top: 4px;">
-                <div id="fill-impacto" style="width: 0%; height: 100%; background: #ff4757; transition: width 0.5s, background 0.5s;"></div>
-            </div>
-            <div id="pct-impacto" style="text-align: right; font-size: 0.75em; color: #f0e6dc; margin-top: 3px;">0% del límite diario</div>
-
-            <div id="alerta-oms" class="alerta-oms"></div>
-        </div>
-
-        <!-- GRÁFICO CENTRAL PROTAGONISTA -->
-        <div id="overview-panel">
-            <h3>Azúcar vs Calorías en el Menú</h3>
-            <p>Cada punto representa una bebida. Haz clic en cualquiera para seleccionarla.</p>
-            <div id="overview-grafico"></div>
-            <div id="overview-detalle">Cargando datos...</div>
-        </div>
-
-        <!-- TARJETA RELOJ ENERGÉTICO (180°) - Derecha inferior -->
-        <div id="reloj-panel">
-            <h3><span>Reloj Energético</span> <span>⚡</span></h3>
-            <div id="reloj-grafico"></div>
-            <div class="reloj-stats">
-                <div id="reloj-calorias" class="reloj-cal-val">0 Cal</div>
-                <div id="reloj-pct-diario" class="reloj-sub">0% dieta (2.000 kcal)</div>
-            </div>
-            <div id="reloj-actividad" class="reloj-ejercicio">
-                🏃 Requiere ~0 min de trote
-            </div>
-        </div>
     </div>
 
     <script>
         // ========================================================
-        // TABLET -> FLASK (COMPUTADOR) -> ARDUINO LEONARDO (USB)
-        // Se utiliza el servidor.py y arduino_azucar.ino entregados antes.
-        // No es necesario conectar el Arduino a la tablet.
+        // CONTROL DE ESTADO Y FLUJO DEL PEDIDO
         // ========================================================
         const estadoArduino = document.getElementById('estado-arduino');
         const botonEnviarBebida = document.getElementById('btn-enviar-bebida');
-        const botonVolverCero = document.getElementById('btn-volver-cero');
+        const botonDetenerArduino = document.getElementById('btn-detener-arduino');
         const botonComprobarConexion = document.getElementById('btn-conectar-arduino');
+        const bloqueTamanoLeche = document.getElementById('bloque-tamano-leche');
+        const resultadoPedidoContainer = document.getElementById('resultado-pedido-container');
+        const btnOtroPedido = document.getElementById('btn-otro-pedido');
 
         let arduinoConectado = false;
         let arduinoOcupado = false;
         let arduinoRequiereRevision = false;
         let enviandoPedido = false;
+        let pedidoRealizado = false;
+
+        function actualizarTimeline() {
+            const step1 = document.getElementById('t-step-1');
+            const step2 = document.getElementById('t-step-2');
+            const step3 = document.getElementById('t-step-3');
+            const step4 = document.getElementById('t-step-4');
+
+            step1.className = 'timeline-step';
+            step2.className = 'timeline-step';
+            step3.className = 'timeline-step';
+            step4.className = 'timeline-step';
+
+            if (pedidoRealizado) {
+                step1.classList.add('completed');
+                step2.classList.add('completed');
+                step3.classList.add('completed');
+                step4.classList.add('active');
+            } else if (estadoActual.bebida && estadoActual.tamano && estadoActual.leche) {
+                step1.classList.add('completed');
+                step2.classList.add('completed');
+                step3.classList.add('active');
+            } else if (estadoActual.bebida) {
+                step1.classList.add('completed');
+                step2.classList.add('active');
+            } else {
+                step1.classList.add('active');
+            }
+        }
 
         function mostrarEstadoArduino(mensaje) {
             estadoArduino.textContent = mensaje;
@@ -652,12 +723,9 @@
             const disponible = arduinoConectado && !arduinoOcupado &&
                                !arduinoRequiereRevision && !enviandoPedido;
             botonEnviarBebida.disabled = !disponible || !estadoActual.datosFinales;
-            botonVolverCero.disabled = !disponible;
         }
 
         async function comprobarConexionArduino() {
-            // GitHub Pages muestra la web, pero no controla el USB del computador.
-            // Debe abrirse mediante el servidor Python en http://IP:5000.
             if (location.protocol === 'file:' || location.hostname.endsWith('.github.io')) {
                 arduinoConectado = false;
                 mostrarEstadoArduino('Abre esta página desde el servidor Python del computador (http://IP:5000).');
@@ -675,13 +743,13 @@
 
                 if (!enviandoPedido) {
                     if (arduinoRequiereRevision) {
-                        mostrarEstadoArduino('⚠️ Movimiento sin confirmar: revisa el mecanismo y reinicia Python.');
+                        mostrarEstadoArduino('⚠️ Movimiento sin confirmar: revisa el mecanismo.');
                     } else if (!arduinoConectado) {
-                        mostrarEstadoArduino('❌ Arduino desconectado del computador.');
+                        mostrarEstadoArduino('❌ Arduino desconectado.');
                     } else if (arduinoOcupado) {
-                        mostrarEstadoArduino('⏳ Arduino ocupado; espera que termine.');
+                        mostrarEstadoArduino('⏳ Arduino ocupado.');
                     } else {
-                        mostrarEstadoArduino('✅ Arduino conectado al computador y disponible.');
+                        mostrarEstadoArduino('✅ Arduino conectado y disponible.');
                     }
                 }
             } catch (error) {
@@ -689,7 +757,7 @@
                 arduinoConectado = false;
                 arduinoOcupado = false;
                 if (!enviandoPedido) {
-                    mostrarEstadoArduino('❌ No hay conexión con Python. Comprueba http://IP:5000 en la tablet.');
+                    mostrarEstadoArduino('❌ Sin conexión con Python (http://IP:5000).');
                 }
             }
             actualizarControlesArduino();
@@ -697,20 +765,19 @@
 
         botonComprobarConexion.addEventListener('click', comprobarConexionArduino);
 
-        // /pedido espera hasta que el Leonardo responda LISTO:<gramos>.
         async function solicitarMovimientoArduino(gramos) {
             if (enviandoPedido || !arduinoConectado || arduinoOcupado || arduinoRequiereRevision) {
-                mostrarEstadoArduino('El Arduino no está disponible. Comprueba su estado.');
+                mostrarEstadoArduino('El Arduino no está disponible.');
                 return;
             }
             if (!Number.isInteger(gramos) || gramos < 0 || gramos > 84) {
-                mostrarEstadoArduino('❌ Los gramos enviados deben estar entre 0 y 84.');
+                mostrarEstadoArduino('❌ Los gramos deben estar entre 0 y 84.');
                 return;
             }
 
             enviandoPedido = true;
             actualizarControlesArduino();
-            mostrarEstadoArduino(`⏳ Moviendo el mecanismo hasta ${gramos} g...`);
+            mostrarEstadoArduino(`⏳ Moviendo mecanismo hasta ${gramos} g...`);
 
             try {
                 const respuesta = await fetch('/pedido', {
@@ -719,28 +786,40 @@
                     body: JSON.stringify({ gramos })
                 });
                 const resultado = await respuesta.json();
-                if (!respuesta.ok) {
-                    throw new Error(resultado.error || 'No se pudo completar el pedido');
-                }
-                mostrarEstadoArduino(`✅ El Arduino terminó la secuencia de ${resultado.gramos} g.`);
+                if (!respuesta.ok) throw new Error(resultado.error || 'No se pudo completar el pedido');
+                mostrarEstadoArduino(`✅ Pedido físico de ${resultado.gramos} g completado.`);
             } catch (error) {
                 console.error('Error al enviar el pedido:', error);
-                mostrarEstadoArduino(`❌ ${error.message}. Revisa el mecanismo antes de reintentar.`);
+                mostrarEstadoArduino(`❌ ${error.message}.`);
             } finally {
                 enviandoPedido = false;
                 actualizarControlesArduino();
-                // Actualizar flags de bloqueo sin borrar inmediatamente el resultado.
                 setTimeout(comprobarConexionArduino, 5000);
             }
         }
 
-        // Esto NO es una parada de emergencia: 0 g ordena bajar a la base,
-        // y el servidor no acepta la orden mientras haya otro movimiento.
-        botonVolverCero.addEventListener('click', async () => {
-            if (!confirm('¿Quieres volver a la posición de 0 g? Solo puede hacerse cuando el motor está libre. Esto NO detiene un movimiento en curso.')) {
-                return;
-            }
+        botonDetenerArduino.addEventListener('click', async () => {
+            if (!confirm('¿Quieres volver a la posición de 0 g / detener motor?')) return;
             await solicitarMovimientoArduino(0);
+        });
+
+        btnOtroPedido.addEventListener('click', () => {
+            pedidoRealizado = false;
+            resultadoPedidoContainer.style.display = 'none';
+            document.getElementById('bloque-bebida').style.display = 'block';
+            document.getElementById('aura-peligro-overlay').style.opacity = 0;
+            document.getElementById('banner-peor-caso').style.display = 'none';
+            
+            // Reiniciar selección
+            estadoActual.bebida = null;
+            estadoActual.tamano = null;
+            estadoActual.leche = null;
+            estadoActual.datosFinales = null;
+            bloqueTamanoLeche.classList.add('bloqueado');
+            document.getElementById('search-box').value = '';
+            renderizarBebidasVis(Array.from(agrupadoPorBebida.keys()).sort());
+            actualizarTimeline();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
         });
 
         const modalOverlay = document.getElementById('modal-overlay');
@@ -762,31 +841,12 @@
         modalOverlay.addEventListener('click', () => modalOverlay.style.display = 'none');
 
         // ========================================================
-        // FILTRADO DE FRECUENCIAS Y SONIFICACIÓN (TONE.JS)
+        // SONIFICACIÓN (TONE.JS)
         // ========================================================
-        const sugarHighpass = new Tone.Filter({
-            frequency: 3000,
-            type: "highpass",
-            rolloff: -12
-        }).toDestination();
-
-        const sugarPlayer = new Tone.Player({
-            url: "data/sugar_sound.wav",
-            autostart: false,
-            volume: -8
-        }).connect(sugarHighpass);
-
-        const glupLowpass = new Tone.Filter({
-            frequency: 750,
-            type: "lowpass",
-            rolloff: -12
-        }).toDestination();
-
-        const glupPlayer = new Tone.Player({
-            url: "data/glup_glup_sound.mp3",
-            autostart: false,
-            volume: -4
-        }).connect(glupLowpass);
+        const sugarHighpass = new Tone.Filter({ frequency: 3000, type: "highpass", rolloff: -12 }).toDestination();
+        const sugarPlayer = new Tone.Player({ url: "data/sugar_sound.wav", autostart: false, volume: -8 }).connect(sugarHighpass);
+        const glupLowpass = new Tone.Filter({ frequency: 750, type: "lowpass", rolloff: -12 }).toDestination();
+        const glupPlayer = new Tone.Player({ url: "data/glup_glup_sound.mp3", autostart: false, volume: -4 }).connect(glupLowpass);
 
         let datosOriginales = [];
         let agrupadoPorBebida = {};
@@ -801,7 +861,6 @@
 
         const jerarquiaTamanos = ["Solo", "Doppio", "Short", "Tall", "Grande", "Venti"];
 
-        // Carga rápida de datos
         fetch('data/data_starbucks_detallado.json')
             .then(res => res.json())
             .then(data => {
@@ -816,27 +875,17 @@
                 
                 inicializarRelojEnergetico();
                 renderizarBebidasVis(Array.from(agrupadoPorBebida.keys()).sort());
-                renderizarOverview();
 
                 peorCasoGlobal = datosOriginales.reduce((prev, curr) => {
                     return (Number(curr['Sugars (g)']) || 0) > (Number(prev['Sugars (g)']) || 0) ? curr : prev;
                 }, datosOriginales[0]);
-
-                if (peorCasoGlobal) {
-                    estadoActual.bebida = peorCasoGlobal.Bebida;
-                    estadoActual.tamano = peorCasoGlobal.tamano_vaso;
-                    estadoActual.leche = peorCasoGlobal.tipo_leche;
-                    procesarSeleccionSinEjecutar('bebida', peorCasoGlobal.Bebida);
-                }
             })
             .catch(error => {
                 console.error("Error al cargar datos:", error);
             });
 
         const desbloquearAudioInicial = async () => {
-            if (Tone.context.state !== 'running') {
-                await Tone.start();
-            }
+            if (Tone.context.state !== 'running') await Tone.start();
             window.removeEventListener('pointerdown', desbloquearAudioInicial);
             window.removeEventListener('keydown', desbloquearAudioInicial);
         };
@@ -872,7 +921,10 @@
         }
 
         function procesarSeleccionSinEjecutar(tipo, valor) {
-            if (tipo === 'bebida') estadoActual.bebida = valor;
+            if (tipo === 'bebida') {
+                estadoActual.bebida = valor;
+                bloqueTamanoLeche.classList.remove('bloqueado');
+            }
             else if (tipo === 'tamano') estadoActual.tamano = valor;
             else if (tipo === 'leche') estadoActual.leche = valor;
 
@@ -904,10 +956,10 @@
             renderizarBebidasVis(nombres);
             renderizarTamanosVis(tamanosDisp);
             renderizarLechesVis(lechesDisp);
-            renderizarOverview();
             actualizarControlesArduino();
             actualizarPanelMetricasUI();
             actualizarRelojEnergetico();
+            actualizarTimeline();
 
             // Gestionar Banner del Peor Caso
             const banner = document.getElementById('banner-peor-caso');
@@ -929,7 +981,10 @@
                 btn.className = 'opcion-btn';
                 if (estadoActual.bebida === nombre) btn.classList.add('active');
                 btn.innerText = nombre;
-                btn.onclick = () => procesarSeleccionSinEjecutar('bebida', nombre);
+                btn.onclick = () => {
+                    procesarSeleccionSinEjecutar('bebida', nombre);
+                    bloqueTamanoLeche.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                };
                 contenedor.appendChild(btn);
             });
         }
@@ -963,169 +1018,39 @@
         }
 
         // ==========================================
-        // CONFIRMAR BEBIDA Y ENVIAR GRAMOS AL ARDUINO
+        // REALIZAR PEDIDO (ENVÍO AL ARDUINO)
         // ==========================================
         botonEnviarBebida.addEventListener('click', async () => {
             if (!estadoActual.datosFinales) {
-                mostrarEstadoArduino('Selecciona primero una bebida, tamaño y leche.');
+                mostrarEstadoArduino('Selecciona una bebida, tamaño y leche primero.');
                 return;
             }
 
             const gramosReales = Number(estadoActual.datosFinales['Sugars (g)']);
-            if (!Number.isFinite(gramosReales) || gramosReales < 0) {
-                mostrarEstadoArduino('❌ La bebida no tiene un valor de azúcar válido.');
-                return;
-            }
-
-            // La calibración física del Leonardo admite como máximo 84 gramos.
             const gramosMotor = Math.max(0, Math.min(84, Math.round(gramosReales)));
-            if (gramosReales > 84) {
-                const confirmado = confirm(
-                    `Esta bebida tiene ${gramosReales} g de azúcar, pero el mecanismo solo llega a 84 g. ¿Quieres representarla con 84 g?`
-                );
-                if (!confirmado) return;
-            }
 
-            // Enviar de inmediato y bloquear nuevos clics antes de iniciar el audio.
-            // Esto evita pedidos duplicados mientras Tone.js prepara el sonido.
+            pedidoRealizado = true;
+            document.getElementById('bloque-bebida').style.display = 'none';
+            bloqueTamanoLeche.style.display = 'none';
+            resultadoPedidoContainer.style.display = 'flex';
+            actualizarTimeline();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+
             const movimiento = solicitarMovimientoArduino(gramosMotor);
             try {
                 if (Tone.context.state !== 'running') await Tone.start();
                 await reproducirSonidos(estadoActual.datosFinales);
             } catch (error) {
-                console.warn('No se pudieron reproducir los sonidos:', error);
+                console.warn('Audio no disponible:', error);
             }
             actualizarRelojEnergetico();
-
             await movimiento;
         });
 
-        // Comprobación inicial y después cada 10 segundos.
-        // No se consulta durante un pedido para conservar el mensaje de progreso.
         comprobarConexionArduino();
         setInterval(() => {
             if (!enviandoPedido) comprobarConexionArduino();
         }, 10000);
-
-        /* --- Gráfico Central Protagonista --- */
-        function renderizarOverview() {
-            const contenedor = d3.select("#overview-grafico");
-            contenedor.selectAll("*").remove();
-
-            const datosFiltrados = datosOriginales.filter(d => 
-                Number.isFinite(Number(d["Sugars (g)"])) && Number.isFinite(Number(d["Calories (Cal)"]))
-            );
-
-            if (datosFiltrados.length === 0) {
-                d3.select("#overview-detalle").text("No hay datos disponibles.");
-                return;
-            }
-
-            const gruposMap = d3.rollup(
-                datosFiltrados,
-                v => ({
-                    Bebida: v[0].Bebida,
-                    "Sugars (g)": d3.mean(v, d => Number(d["Sugars (g)"])),
-                    "Calories (Cal)": d3.mean(v, d => Number(d["Calories (Cal)"]))
-                }),
-                d => d.Bebida
-            );
-
-            let datos = Array.from(gruposMap.values());
-
-            const DOMElement = document.getElementById('overview-grafico');
-            const ancho = DOMElement.clientWidth || 520;
-            const alto = DOMElement.clientHeight || 280;
-            const margen = { top: 15, right: 20, bottom: 40, left: 50 };
-
-            const maxAzucar = d3.max(datos, d => Number(d["Sugars (g)"])) || 10;
-            const maxCalorias = d3.max(datos, d => Number(d["Calories (Cal)"])) || 100;
-
-            const svgOverview = contenedor.append("svg")
-                .attr("viewBox", `0 0 ${ancho} ${alto}`)
-                .attr("role", "img")
-                .attr("aria-label", "Azúcar vs Calorías por bebida");
-
-            const x = d3.scaleLinear()
-                .domain([0, Math.max(10, maxAzucar)])
-                .nice()
-                .range([margen.left, ancho - margen.right]);
-
-            const y = d3.scaleLinear()
-                .domain([0, Math.max(50, maxCalorias)])
-                .nice()
-                .range([alto - margen.bottom, margen.top]);
-
-            svgOverview.append("g")
-                .attr("transform", `translate(0,${alto - margen.bottom})`)
-                .call(d3.axisBottom(x).ticks(5))
-                .call(g => g.selectAll("text").attr("fill", "#f3ede6").attr("font-size", 10))
-                .call(g => g.selectAll("path,line").attr("stroke", "#8c7260"));
-
-            svgOverview.append("text")
-                .attr("x", ancho / 2)
-                .attr("y", alto - 5)
-                .attr("fill", "#fffcfe")
-                .attr("font-size", 11)
-                .attr("font-weight", "600")
-                .attr("text-anchor", "middle")
-                .text("Promedio de Azúcar (g)");
-
-            svgOverview.append("g")
-                .attr("transform", `translate(${margen.left},0)`)
-                .call(d3.axisLeft(y).ticks(5))
-                .call(g => g.selectAll("text").attr("fill", "#f3ede6").attr("font-size", 10))
-                .call(g => g.selectAll("path,line").attr("stroke", "#8c7260"));
-
-            svgOverview.append("text")
-                .attr("transform", "rotate(-90)")
-                .attr("x", -(alto / 2))
-                .attr("y", 14)
-                .attr("fill", "#fffcfe")
-                .attr("font-size", 11)
-                .attr("font-weight", "600")
-                .attr("text-anchor", "middle")
-                .text("Calorías (Cal)");
-
-            const esSeleccionado = (d) => {
-                return estadoActual.datosFinales && d.Bebida === estadoActual.datosFinales.Bebida;
-            };
-
-            const colorEscalaAzucar = d3.scaleLinear()
-                .domain([0, 50])
-                .range(["#ffffff", "#ff4757"])
-                .clamp(true);
-
-            const puntos = svgOverview.selectAll("circle")
-                .data(datos)
-                .join("circle")
-                .attr("cx", d => x(Number(d["Sugars (g)"])))
-                .attr("cy", d => y(Number(d["Calories (Cal)"])))
-                .attr("r", d => esSeleccionado(d) ? 8.5 : 5.5)
-                .attr("fill", d => esSeleccionado(d) ? "#EAC784" : colorEscalaAzucar(Number(d["Sugars (g)"])))
-                .attr("stroke", d => esSeleccionado(d) ? "#ffffff" : "rgba(36, 22, 12, 0.8)")
-                .attr("stroke-width", d => esSeleccionado(d) ? 2.5 : 1)
-                .attr("opacity", d => esSeleccionado(d) ? 1 : 0.85)
-                .style("cursor", "pointer");
-
-            puntos.append("title")
-                .text(d => `${d.Bebida} (Promedio):\n• Azúcar: ${Number(d["Sugars (g)"]).toFixed(1)} g\n• Calorías: ${Number(d["Calories (Cal)"]).toFixed(1)} Cal`);
-
-            puntos.on("click", (event, d) => {
-                procesarSeleccionSinEjecutar("bebida", d.Bebida);
-            });
-
-            const seleccion = estadoActual.datosFinales;
-            const itemSeleccionadoOverview = seleccion ? datos.find(d => d.Bebida === seleccion.Bebida) : null;
-            
-            d3.select("#overview-detalle").text(
-                itemSeleccionadoOverview
-                    ? `Seleccionado: ${itemSeleccionadoOverview.Bebida} — Promedio de ` +
-                      `${Number(itemSeleccionadoOverview["Sugars (g)"]).toFixed(1)} g de azúcar | ` +
-                      `${Number(itemSeleccionadoOverview["Calories (Cal)"]).toFixed(1)} Cal`
-                    : "Selecciona una bebida en el gráfico o en la barra lateral."
-            );
-        }
 
         function actualizarPanelMetricasUI() {
             if (!estadoActual.datosFinales) return;
@@ -1133,7 +1058,6 @@
             const pctOms = (gramos / 50) * 100;
             const cucharadas = (gramos / 4).toFixed(1);
 
-            document.getElementById('metricas-panel').style.opacity = 1;
             document.getElementById('valor-azucar').innerText = `${Math.round(gramos)}g`;
             document.getElementById('equivalencia-cucharadas').innerText = `${cucharadas} cucharaditas 🥄`;
             
@@ -1147,7 +1071,6 @@
 
             document.getElementById('pct-impacto').innerText = `${Math.round(pctOms)}% del límite diario`;
 
-            // Control Aura Roja Perimetral si supera 50g
             const auraOverlay = document.getElementById('aura-peligro-overlay');
             if (gramos >= 50) {
                 const excesoPct = Math.min(Math.max((gramos - 50) / 40, 0), 1);
@@ -1176,7 +1099,7 @@
             }
         }
 
-        /* --- RELOJ ENERGÉTICO EN 180° --- */
+        /* --- RELOJ ENERGÉTICO --- */
         let svgReloj, agujaReloj, anguloActualReloj = -90;
 
         function inicializarRelojEnergetico() {
@@ -1239,8 +1162,6 @@
             const pctDiario = ((calorias / 2000) * 100).toFixed(0);
             const minutosTrote = Math.round(calorias / 10);
 
-            document.getElementById('reloj-panel').style.opacity = 1;
-
             const calNode = document.getElementById('reloj-calorias');
             d3.select(calNode).transition().duration(1000)
                 .tween("text", function() {
@@ -1272,13 +1193,6 @@
             }
         }
 
-        window.addEventListener('resize', () => {
-            renderizarOverview();
-        });
-
-        // =========================================================================
-        // REPRODUCCIÓN SONORA EQUIVALENTE
-        // =========================================================================
         async function reproducirSonidos(datos) {
             if (Tone.context.state !== 'running') await Tone.start();
             
