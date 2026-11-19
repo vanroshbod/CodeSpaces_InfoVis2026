@@ -10,7 +10,7 @@ import serial
 from flask import Flask, abort, jsonify, request, send_from_directory
 
 # AJUSTAR: consulta el COM real en Arduino IDE > Herramientas > Puerto.
-PUERTO_ARDUINO = "COM9"
+PUERTO_ARDUINO = "COM11"
 BAUDIOS = 9600
 MAX_GRAMOS = 84
 ESPERA_MAXIMA_SEGUNDOS = 30
