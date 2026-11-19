@@ -5,7 +5,7 @@ Servo motor;
 const int PIN_MOTOR = 5;
 const int VELOCIDAD = 110;         // Velocidad para subir
 const int VELOCIDAD_INVERSA = 75;  // Velocidad para bajar
-const int DETENIDO = 90;
+const int DETENIDO = 120;
 
 // DATOS FÍSICOS REALES (se conservan los valores calibrados)
 const float ALTURA_MAX_CM = 15.0;

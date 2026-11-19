@@ -11,7 +11,7 @@ from flask import Flask, abort, jsonify, request, send_from_directory
 # CONFIGURACION DE LOS DOS ARDUINOS
 # ==========================================
 
-PUERTO_AZUCAR = "COM8"
+PUERTO_AZUCAR = "COM11"
 PUERTO_VASO = "COM9"
 
 VELOCIDAD_SERIAL = 9600

@@ -6,9 +6,9 @@
 Servo motorVasos;
 
 const int PIN_MOTOR = 5;
-const int DETENIDO = 90;          // Ajustar si tu servo no se detiene en 90.
-const int VELOCIDAD_DERECHA = 110;
-const int VELOCIDAD_IZQUIERDA = 75;
+const int DETENIDO = 110;          // Ajustar si tu servo no se detiene en 90.
+const int VELOCIDAD_DERECHA = 130;
+const int VELOCIDAD_IZQUIERDA = 55;
 
 // VALOR DE EJEMPLO, NO CALIBRADO: mide cuanto tarda tu mecanismo
 // en ir de una posicion a la siguiente sin llegar a topes mecanicos.
