@@ -1,33 +1,63 @@
 #include <Servo.h>
 
-// SEGUNDO ARDUINO LEONARDO: mueve un servo de ROTACION CONTINUA
-// al tamano de vaso seleccionado (sin sensores de posicion).
-// IMPORTANTE: poner el mecanismo fisicamente en Tall ANTES de arrancar.
+// ==========================================================
+// ARDUINO DE LOS VASOS (servo de rotacion continua, sin sensores)
+// ----------------------------------------------------------
+// Hay 4 vasos a la MISMA distancia entre si. El mecanismo se
+// mueve DE A UN VASO: avanza de un centro al siguiente, se detiene,
+// espera un momento, avanza al siguiente centro, y asi hasta llegar.
+// Asi solo hay que calibrar cuanto tarda en ir de centro a centro
+// hacia cada lado (MS_CENTRO_A_CENTRO_DERECHA / _IZQUIERDA).
+//
+// IMPORTANTE: al encender, dejar fisicamente el vaso de
+// POSICION_INICIAL (Short) bajo el mecanismo de azucar.
+// ==========================================================
+
 Servo motorVasos;
 
 const int PIN_MOTOR = 5;
-const int DETENIDO = 110;          // Ajustar si tu servo no se detiene en 90.
+const int DETENIDO = 91;            // Ajustar si tu servo no se detiene en 91.
 const int VELOCIDAD_DERECHA = 130;
 const int VELOCIDAD_IZQUIERDA = 55;
 
-// VALOR DE EJEMPLO, NO CALIBRADO: mide cuanto tarda tu mecanismo
-// en ir de una posicion a la siguiente sin llegar a topes mecanicos.
-const unsigned long MS_POR_PASO_DERECHA = 450;
-const unsigned long MS_POR_PASO_IZQUIERDA = 450;
+// ---------------- CALIBRACION ----------------
+// Tiempo que tarda en pasar del CENTRO de un vaso al CENTRO del vecino.
+// VALORES DE EJEMPLO: medirlos con los comandos "+" y "-" (ver abajo).
+const unsigned long MS_CENTRO_A_CENTRO_DERECHA = 995;
+const unsigned long MS_CENTRO_A_CENTRO_IZQUIERDA = 995;
+// Pausa en cada centro para que el vaso se estabilice antes de seguir.
+const unsigned long PAUSA_EN_CADA_VASO_MS = 800;
 
-// Posiciones logicas en el mecanismo, de izquierda a derecha:
-// Solo(0), Doppio(1), Short(2), Tall(3), Grande(4), Venti(5)
-// Se asume que al encender esta fisicamente en Tall.
-int posicionActual = 3;
+// Vasos fisicos, de izquierda a derecha:
+//   0 = Short, 1 = Tall, 2 = Grande, 3 = Venti
+// Solo y Doppio (espresso) no tienen vaso propio: usan el vaso Short.
+const int NUM_VASOS = 4;
+const int POSICION_INICIAL = 0;     // Short
+int posicionActual = POSICION_INICIAL;
 
 int posicionDelTamano(String tamano) {
-  if (tamano == "Solo") return 0;
-  if (tamano == "Doppio") return 1;
-  if (tamano == "Short") return 2;
-  if (tamano == "Tall") return 3;
-  if (tamano == "Grande") return 4;
-  if (tamano == "Venti") return 5;
+  if (tamano == "Solo")   return 0;
+  if (tamano == "Doppio") return 0;
+  if (tamano == "Short")  return 0;
+  if (tamano == "Tall")   return 1;
+  if (tamano == "Grande") return 2;
+  if (tamano == "Venti")  return 3;
   return -1;
+}
+
+// Mueve exactamente UN vaso hacia la derecha (+1) o izquierda (-1) y se detiene.
+void moverUnVaso(int direccion) {
+  if (direccion > 0) {
+    motorVasos.write(VELOCIDAD_DERECHA);
+    delay(MS_CENTRO_A_CENTRO_DERECHA);
+  } else {
+    motorVasos.write(VELOCIDAD_IZQUIERDA);
+    delay(MS_CENTRO_A_CENTRO_IZQUIERDA);
+  }
+  motorVasos.write(DETENIDO);
+  delay(PAUSA_EN_CADA_VASO_MS);
+  // Actualiza la referencia LOGICA (no hay sensor que mida la posicion real).
+  posicionActual += direccion;
 }
 
 void setup() {
@@ -40,27 +70,75 @@ void setup() {
 void loop() {
   if (Serial.available() <= 0) return;
 
-  String tamano = Serial.readStringUntil('\n');
-  tamano.trim();
-  if (tamano.length() == 0) return;
+  String mensaje = Serial.readStringUntil('\n');
+  mensaje.trim();
+  if (mensaje.length() == 0) return;
 
-  int destino = posicionDelTamano(tamano);
+  // ---- Comandos de prueba / calibracion (pagina o Monitor Serie) ----
+  // "+" avanza un vaso a la derecha, "-" un vaso a la izquierda,
+  // "?" informa la posicion logica actual, "DER:ms"/"IZQ:ms" giro manual,
+  // "AQUI:<tamano>" fija la posicion sin moverse.
+  // "+" / "-": avanza UN vaso (centro a centro) para probar, SIN revisar
+  // limites y SIN cambiar la posicion que recuerda el Arduino.
+  // Se puede apretar muchas veces seguidas sin tener que devolverlo.
+  // Al terminar, deja un vaso centrado y usa "AQUI:<tamano>".
+  if (mensaje == "+" || mensaje == "-") {
+    int dir = (mensaje == "+") ? 1 : -1;
+    moverUnVaso(dir);
+    posicionActual -= dir;   // deshace el cambio de moverUnVaso: la posicion no cambia
+    Serial.print("LISTO:");
+    Serial.println(mensaje);
+    return;
+  }
+
+  if (mensaje == "?") {
+    Serial.print("POS:");
+    Serial.println(posicionActual);
+    return;
+  }
+
+  // "DER:<ms>" / "IZQ:<ms>": gira ese tiempo exacto SIN cambiar la posicion
+  // logica. Sirve para medir cuanto tarda de centro a centro.
+  // Despues de usarlo, deja el vaso centrado y usa "AQUI:<tamano>".
+  if (mensaje.startsWith("DER:") || mensaje.startsWith("IZQ:")) {
+    unsigned long ms = mensaje.substring(4).toInt();
+    if (ms > 20000) {
+      Serial.println("ERROR:Maximo 20000 ms");
+      return;
+    }
+    motorVasos.write(mensaje.startsWith("DER:") ? VELOCIDAD_DERECHA : VELOCIDAD_IZQUIERDA);
+    delay(ms);
+    motorVasos.write(DETENIDO);
+    Serial.print("LISTO:");
+    Serial.println(mensaje);
+    return;
+  }
+
+  // "AQUI:<tamano>": no se mueve, solo le dice al Arduino en que vaso esta.
+  if (mensaje.startsWith("AQUI:")) {
+    int pos = posicionDelTamano(mensaje.substring(5));
+    if (pos == -1) {
+      Serial.println("ERROR:Tamano no reconocido");
+      return;
+    }
+    posicionActual = pos;
+    Serial.print("LISTO:");
+    Serial.println(mensaje);
+    return;
+  }
+
+  // ---- Comando normal: nombre del tamano ----
+  int destino = posicionDelTamano(mensaje);
   if (destino == -1) {
     Serial.println("ERROR:Tamano no reconocido");
     return;
   }
 
-  int pasos = destino - posicionActual;
-  if (pasos != 0) {
-    unsigned long msPorPaso = pasos > 0 ? MS_POR_PASO_DERECHA : MS_POR_PASO_IZQUIERDA;
-    unsigned long duracion = (unsigned long)abs(pasos) * msPorPaso;
-    motorVasos.write(pasos > 0 ? VELOCIDAD_DERECHA : VELOCIDAD_IZQUIERDA);
-    delay(duracion);
-    motorVasos.write(DETENIDO);
-    // Actualiza la referencia LOGICA, no mide la posicion real.
-    posicionActual = destino;
+  // Avanza de a un vaso, deteniendose en cada centro, hasta llegar.
+  while (posicionActual != destino) {
+    moverUnVaso(destino > posicionActual ? 1 : -1);
   }
 
   Serial.print("LISTO:");
-  Serial.println(tamano);
+  Serial.println(mensaje);
 }
