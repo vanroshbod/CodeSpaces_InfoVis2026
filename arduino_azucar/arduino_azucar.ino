@@ -25,49 +25,57 @@
 Servo motor;
 
 const int PIN_MOTOR = 5;
-const int VELOCIDAD = 110;         // Velocidad para subir
-const int VELOCIDAD_INVERSA = 75;  // Velocidad para bajar
+const int VELOCIDAD = 120;         // Velocidad para subir
+const int VELOCIDAD_INVERSA = 65;  // Velocidad para bajar
 const int DETENIDO = 90;
 
-// DATOS FISICOS REALES (se conservan los valores calibrados)
-const float ALTURA_MAX_CM = 15.0;
+// DATOS FISICOS REALES
+// Altura desde el nivel 0 g hasta el nivel 84 g (vaso lleno).
+const float ALTURA_MAX_CM = 21.0;
 const float GRAMOS_MAX = 84.0;
+// El punto de reposo ("tope", donde se puede cambiar el vaso) esta
+// 2 cm sobre el nivel de 84 g (y 23 cm sobre el nivel 0 g).
+const float CM_TOPE_SOBRE_84G = 2.0;
 
-// CALIBRACION
-const float CM_BAJADA_10S = 16.4;
-const float CM_SUBIDA_10S = 15.8;
+// CALIBRACION: recorrer los 23 cm (tope <-> 0 g) tarda 10 s, subiendo
+// o bajando, con las velocidades VELOCIDAD y VELOCIDAD_INVERSA de arriba.
+const float CM_RECORRIDO_TOTAL = ALTURA_MAX_CM + CM_TOPE_SOBRE_84G;  // 23 cm
+const float CM_BAJADA_10S = CM_RECORRIDO_TOTAL;
+const float CM_SUBIDA_10S = CM_RECORRIDO_TOTAL;
 const float TIEMPO_PRUEBA_MS = 10000.0;
 
 // Margen extra al subir al tope para absorber el error acumulado
 // (antes se usaba al bajar al fondo). Poner 1.0 si choca contra el tope.
 const float MARGEN_TOPE = 1.05;
 
-const float CM_POR_GRAMO = ALTURA_MAX_CM / GRAMOS_MAX;
+const float CM_POR_GRAMO = ALTURA_MAX_CM / GRAMOS_MAX;   // 0.25 cm por gramo
+// Posicion de reposo expresada en "gramos equivalentes" (84 + 2 cm = 92).
+const float GRAMOS_TOPE = GRAMOS_MAX + CM_TOPE_SOBRE_84G / CM_POR_GRAMO;
 const float MS_POR_CM_BAJAR = TIEMPO_PRUEBA_MS / CM_BAJADA_10S;
 const float MS_POR_CM_SUBIR = TIEMPO_PRUEBA_MS / CM_SUBIDA_10S;
 const float MS_POR_GRAMO_BAJAR = CM_POR_GRAMO * MS_POR_CM_BAJAR;
 const float MS_POR_GRAMO_SUBIR = CM_POR_GRAMO * MS_POR_CM_SUBIR;
 
 // Nivel actual expresado en gramos (altura desde el fondo).
-// Parte en GRAMOS_MAX porque al encender esta arriba.
-float nivel = GRAMOS_MAX;
+// Parte en GRAMOS_TOPE porque al encender esta arriba (reposo).
+float nivel = GRAMOS_TOPE;
 
 void subirAlTope() {
-  if (nivel < GRAMOS_MAX) {
+  if (nivel < GRAMOS_TOPE) {
     unsigned long tiempoSubir =
-      (unsigned long)((GRAMOS_MAX - nivel) * MS_POR_GRAMO_SUBIR * MARGEN_TOPE);
+      (unsigned long)((GRAMOS_TOPE - nivel) * MS_POR_GRAMO_SUBIR * MARGEN_TOPE);
     motor.write(VELOCIDAD);
     delay(tiempoSubir);
     motor.write(DETENIDO);
     delay(600);
   }
-  nivel = GRAMOS_MAX;
+  nivel = GRAMOS_TOPE;
 }
 
 void bajarDesdeElTopeHasta(float objetivo) {
   // Se asume que ya esta en el tope.
   unsigned long tiempoBajar =
-    (unsigned long)((GRAMOS_MAX - objetivo) * MS_POR_GRAMO_BAJAR);
+    (unsigned long)((GRAMOS_TOPE - objetivo) * MS_POR_GRAMO_BAJAR);
   if (tiempoBajar > 0) {
     motor.write(VELOCIDAD_INVERSA);
     delay(tiempoBajar);
@@ -126,8 +134,8 @@ void loop() {
   // "AQUI:ARRIBA" o "AQUI:<n>": no se mueve, solo fija el nivel logico.
   if (mensaje.startsWith("AQUI:")) {
     String valor = mensaje.substring(5);
-    float n = (valor == "ARRIBA") ? GRAMOS_MAX : valor.toFloat();
-    if (n < 0 || n > GRAMOS_MAX) {
+    float n = (valor == "ARRIBA") ? GRAMOS_TOPE : valor.toFloat();
+    if (valor != "ARRIBA" && (n < 0 || n > GRAMOS_MAX)) {
       Serial.println("ERROR:Gramos fuera de rango");
       return;
     }

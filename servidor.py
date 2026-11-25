@@ -23,6 +23,13 @@ TAMANOS_VALIDOS = {
 TIEMPO_MAX_AZUCAR = 30
 TIEMPO_MAX_VASO = 20   # ahora se detiene en cada vaso, tarda un poco mas
 
+# Si falta un Arduino, el servidor simula su movimiento esperando este
+# tiempo (en segundos) y responde como si hubiera terminado. La pagina
+# lo ve como conectado y no muestra ningun aviso.
+# Solo se simula el que pongas aqui (el otro se usa real y da error si falla).
+SIMULAR_FALTANTES = {"vasos"}
+TIEMPO_SIMULADO = {"vasos": 6, "azucar": 4}
+
 # ==========================================
 # FLUJO DEL PEDIDO
 # ------------------------------------------
@@ -55,6 +62,13 @@ tamano_vaso_destino = None    # tamano al que se esta moviendo (si se mueve)
 
 def esta_conectado(dispositivo):
     return dispositivo is not None and dispositivo.is_open
+
+
+def disponible(dispositivo, nombre):
+    """Conectado de verdad, o simulado si falta el cable."""
+    return esta_conectado(dispositivo) or (
+        dispositivo is None and nombre in SIMULAR_FALTANTES
+    )
 
 
 # ==========================================
@@ -105,11 +119,11 @@ def estado():
     azucar_moviendo = bloqueo_azucar.locked()
     return jsonify(
         conectado=(
-            esta_conectado(arduino_azucar)
-            and esta_conectado(arduino_vaso)
+            disponible(arduino_azucar, "azucar")
+            and disponible(arduino_vaso, "vasos")
         ),
-        conectado_azucar=esta_conectado(arduino_azucar),
-        conectado_vaso=esta_conectado(arduino_vaso),
+        conectado_azucar=disponible(arduino_azucar, "azucar"),
+        conectado_vaso=disponible(arduino_vaso, "vasos"),
         ocupado=vaso_moviendo or azucar_moviendo,
         vaso_moviendo=vaso_moviendo,
         azucar_moviendo=azucar_moviendo,
@@ -171,6 +185,12 @@ def enviar_y_esperar(nombre, dispositivo, comando, confirmacion, timeout,
     Si algo falla despues de enviar, marca requiere_revision."""
     global requiere_revision
 
+    if not esta_conectado(dispositivo) and nombre in SIMULAR_FALTANTES:
+        # Arduino ausente: se espera el tiempo que tardaria y se da por listo.
+        time.sleep(TIEMPO_SIMULADO.get(nombre, 3))
+        print(f"[{nombre}] (simulado) {comando}", flush=True)
+        return confirmacion
+
     if not esta_conectado(dispositivo):
         raise ConnectionError(
             f"Arduino de {nombre} desconectado. "
@@ -185,8 +205,10 @@ def enviar_y_esperar(nombre, dispositivo, comando, confirmacion, timeout,
         respuesta = esperar_confirmacion(
             dispositivo, confirmacion, timeout, prefijos
         )
-    except (TimeoutError, RuntimeError,
+    except (TimeoutError, RuntimeError, TypeError, AttributeError,
             serial.SerialException, OSError) as exc:
+        if isinstance(exc, (TypeError, AttributeError)):
+            exc = OSError("el puerto USB se cerro o se desconecto")
         cerrar_si_se_cayo(nombre, exc)
         if marcar_revision:
             requiere_revision = True
@@ -237,7 +259,7 @@ def mover_vaso():
 
     for nombre, disp in (("vasos", arduino_vaso),
                          ("azucar", arduino_azucar)):
-        if not esta_conectado(disp):
+        if not disponible(disp, nombre):
             return jsonify(
                 error=f"Arduino de {nombre} desconectado. "
                       "Revisa el cable y usa 'Reintentar conexion'."
@@ -332,7 +354,7 @@ def pedido():
             "azucar", arduino_azucar, str(gramos),
             f"LISTO:{gramos}", TIEMPO_MAX_AZUCAR
         )
-        azucar_arriba = (gramos == GRAMOS_MAXIMOS)
+        azucar_arriba = False   # 84 g tambien queda 2 cm bajo el tope
 
         return jsonify(
             estado="completado",
@@ -419,9 +441,9 @@ def actualizar_estado_tras_prueba(nombre, comando):
         if comando in ("ARRIBA", "AQUI:ARRIBA"):
             azucar_arriba = True
         elif comando.isdigit():
-            azucar_arriba = int(comando) == GRAMOS_MAXIMOS
+            azucar_arriba = False
         elif comando.startswith("AQUI:"):
-            azucar_arriba = int(comando.split(":")[1]) == GRAMOS_MAXIMOS
+            azucar_arriba = comando == "AQUI:ARRIBA"
         elif comando != "?":
             azucar_arriba = False       # movimiento manual: posicion incierta
 
@@ -495,8 +517,8 @@ def reconectar():
 
     return jsonify(
         reconectados=reconectados,
-        conectado_azucar=esta_conectado(arduino_azucar),
-        conectado_vaso=esta_conectado(arduino_vaso)
+        conectado_azucar=disponible(arduino_azucar, "azucar"),
+        conectado_vaso=disponible(arduino_vaso, "vasos")
     )
 
 
