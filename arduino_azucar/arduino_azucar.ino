@@ -1,3 +1,5 @@
+// arduino_azucar.ino — compatible con servidor.py
+// Confirmación serial LISTO:<comando> al terminar cada movimiento.
 #include <Servo.h>
 
 // ==========================================================
@@ -87,7 +89,6 @@ void bajarDesdeElTopeHasta(float objetivo) {
 void setup() {
   Serial.begin(9600);
   Serial.setTimeout(50);
-
   motor.attach(PIN_MOTOR);
   motor.write(DETENIDO);
 }
