@@ -629,12 +629,12 @@
             <p><strong>Visualización de Información (IIC2026)</strong></p>
 
             <h2>Sobre el Proyecto</h2>
-            <p>Esta fisicalización muestra cuánta azúcar tienen las bebidas de Starbucks. Al pedir una bebida, el mecanismo se mueve hasta una altura proporcional a sus gramos de azúcar: el vaso se llena por completo con la bebida más azucarada del menú (84 g) y queda vacío con una bebida sin azúcar.</p>
+            <p>Esta fisicalización muestra cuánta azúcar tienen las bebidas de Starbucks. Al pedir una bebida, el mecanismo baja hasta una altura proporcional a sus gramos de azúcar: el vaso se llena por completo con la bebida más azucarada del menú (84 g) y queda vacío con una bebida sin azúcar.</p>
 
             <img src="data/starbucks_principal.jpg" alt="Visualización Nutricional Starbucks" class="modal-imagen">
 
             <h2>Estructura y Dimensiones</h2>
-            <p>Primero eliges el tamaño del vaso, luego la bebida y la leche. El azúcar resultante se compara con los límites recomendados por la Organización Mundial de la Salud (OMS).</p>
+            <p>Primero eliges el tamaño del vaso (el selector físico se mueve a ese vaso), luego la bebida y la leche. El azúcar resultante se compara con los límites recomendados por la Organización Mundial de la Salud (OMS).</p>
             <p>Fuente de datos: <a href="https://www.kaggle.com/datasets/ashishpatel26/starbucks_drinkmenu_expanded/data" target="_blank" rel="noopener noreferrer">Starbucks Drink Menu Dataset (Kaggle)</a>.</p>
 
             <h2>Desarrollado por:</h2>
@@ -668,11 +668,34 @@
     <div id="modal-prueba-overlay">
         <div id="modal-prueba-card">
             <h2>🔧 Modo prueba / calibración</h2>
-            <p class="prueba-nota">Prueba y calibra el Arduino del azúcar. Los controles solo se activan si el Arduino está conectado.</p>
+            <p class="prueba-nota">Prueba cada Arduino por separado. Solo se activan los controles del Arduino que esté conectado. Aquí el azúcar <strong>no</strong> sube solo antes de mover los vasos: revisa que no choquen.</p>
             <div id="prueba-estado">Consultando...</div>
             <div class="prueba-fila">
                 <button class="opcion-btn" type="button" id="prueba-reconectar">🔌 Reintentar conexión</button>
                 <button class="opcion-btn" type="button" id="prueba-desbloquear">🔓 Desbloquear</button>
+            </div>
+        </div>
+
+            <div id="prueba-vasos" class="prueba-seccion">
+                <h3>Vasos</h3>
+                <div class="prueba-fila" id="prueba-vasos-tamanos"></div>
+                <p class="prueba-nota">Cada lado se configura por separado. Escribe los ms y aprieta "Un vaso" las veces que quieras (no tiene límite ni cambia la posición guardada). Cuando quede justo de centro a centro, copia ese número en MS_CENTRO_A_CENTRO_IZQUIERDA o MS_CENTRO_A_CENTRO_DERECHA.</p>
+                <div class="prueba-fila">
+                    <label>Izquierda: ms</label><input type="number" id="prueba-vasos-ms-izq" value="450" min="0" max="20000" step="10">
+                    <button class="opcion-btn" type="button" id="prueba-vasos-izq">◀ Un vaso</button>
+                </div>
+                <div class="prueba-fila">
+                    <label>Derecha: ms</label><input type="number" id="prueba-vasos-ms-der" value="450" min="0" max="20000" step="10">
+                    <button class="opcion-btn" type="button" id="prueba-vasos-der">Un vaso ▶</button>
+                </div>
+                <div class="prueba-fila">
+                    <button class="opcion-btn" type="button" data-vaso="?">¿Dónde está?</button>
+                </div>
+                <div class="prueba-fila">
+                    <label>Ahora está en</label>
+                    <select id="prueba-vasos-aqui"><option>Short</option><option>Tall</option><option>Grande</option><option>Venti</option></select>
+                    <button class="opcion-btn" type="button" id="prueba-vasos-fijar">Fijar (sin mover)</button>
+                </div>
             </div>
 
             <div id="prueba-azucar" class="prueba-seccion">
@@ -680,10 +703,10 @@
                 <div class="prueba-fila">
                     <label>Gramos (0-84)</label><input type="number" id="prueba-azucar-g" value="42" min="0" max="84">
                     <button class="opcion-btn" type="button" id="prueba-azucar-ir">Ir al nivel</button>
-                    <button class="opcion-btn" type="button" data-azucar="ARRIBA">⬆ Altura para cambiar</button>
+                    <button class="opcion-btn" type="button" data-azucar="ARRIBA">⬆ Arriba</button>
                     <button class="opcion-btn" type="button" data-azucar="?">¿Dónde está?</button>
                 </div>
-                <p class="prueba-nota">Calibrar: mueve un tiempo exacto sin cambiar el nivel que recuerda el Arduino. Cuando termines, déjalo a mano en la altura para cambiar y toca "Está arriba".</p>
+                <p class="prueba-nota">Calibrar: mueve un tiempo exacto sin cambiar el nivel que recuerda el Arduino. Cuando termines, déjalo arriba a mano y toca "Está arriba".</p>
                 <div class="prueba-fila">
                     <label>ms</label><input type="number" id="prueba-azucar-ms" value="1000" min="0" max="20000" step="50">
                     <button class="opcion-btn" type="button" id="prueba-azucar-subir">⬆ Subir</button>
@@ -703,7 +726,7 @@
         <!-- TÍTULO -->
         <div id="titulo-principal">
             <h1>¿Cuánta <span>azúcar</span> tiene tu bebida?</h1>
-            <p>Arma tu bebida de Starbucks y mira cómo baja el azúcar hasta su nivel en el vaso. La altura del azúcar es proporcional a los gramos que tiene la bebida.</p>
+            <p>Arma tu bebida de Starbucks y mira cómo baja el azúcar en el vaso. La altura del azúcar es proporcional a los gramos que tiene la bebida.</p>
             <p class="escala-nota">Vaso lleno = 84 g, la bebida más azucarada del menú · mitad del vaso = 42 g · vaso vacío = 0 g</p>
         </div>
 
@@ -711,7 +734,7 @@
         <div class="seccion-card">
             <div class="paso-titulo">1. Conexión Arduino</div>
             <button id="btn-conectar-arduino" class="opcion-btn" type="button" style="background-color: var(--sb-brown-dark); border-color: var(--sb-gold); color: var(--sb-gold); font-weight: bold; margin-bottom: 8px; text-align: center; width: 100%;">
-                🔄 Comprobar Arduino
+                🔄 Comprobar ambos Arduino
             </button>
             <p id="estado-arduino" role="status" aria-live="polite" class="instrucciones" style="margin-top: 0; margin-bottom: 0; font-size: 0.82em; color: #c9b8ab; text-align: center;">
                 Comprobando la conexión con el computador...
@@ -722,8 +745,9 @@
         <!-- PASO 2: TAMAÑO DEL VASO (SE ENVÍA AL ARDUINO DE VASOS DE INMEDIATO) -->
         <div id="bloque-tamano" class="seccion-card">
             <div class="paso-titulo">2. Tamaño del Vaso</div>
-            <p class="instrucciones">El tamaño define qué bebidas puedes elegir.</p>
+            <p class="instrucciones">Al elegir el tamaño, el vaso se mueve a su lugar mientras eliges la bebida.</p>
             <div id="lista-tamanos" class="grid-opciones"></div>
+            <div id="estado-vaso" role="status" aria-live="polite"></div>
         </div>
 
         <!-- PASO 3: BEBIDA (BLOQUEADO HASTA ELEGIR TAMAÑO) -->
@@ -752,8 +776,8 @@
                 </button>
             </div>
             <div id="acciones-container-2" style="display: flex; width: 100%; margin-top: 12px;">
-                <button id="btn-subir-azucar" class="btn-accion" type="button" disabled title="Sube el mecanismo a la altura para cambiar el vaso (reposo). No es una parada de emergencia." style="background-color: #56432f; color: var(--sb-cream);">
-                    ⬆ Subir para cambiar vaso
+                <button id="btn-subir-azucar" class="btn-accion" type="button" disabled title="Sube el mecanismo de azúcar a su posición de reposo (arriba). No es una parada de emergencia." style="background-color: #56432f; color: var(--sb-cream);">
+                    ⬆ Subir azúcar
                 </button>
             </div>
         </div>
@@ -781,7 +805,7 @@
             <div style="margin-top: 15px; display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 0;">
                 <button id="btn-otro-pedido" type="button">🔄 Hacer otro pedido</button>
                 <button id="btn-info-nutricional-resultado" type="button">📋 Info nutricional</button>
-                <button id="btn-volver-cero-resultado" type="button" disabled title="Sube el mecanismo a la altura para cambiar el vaso (reposo). No es una parada de emergencia.">⬆ Subir para cambiar vaso</button>
+                <button id="btn-volver-cero-resultado" type="button" disabled title="Sube el mecanismo de azúcar a su posición de reposo. No es una parada de emergencia.">⬆ Subir azúcar</button>
             </div>
         </div>
 
@@ -789,10 +813,11 @@
 
     <script>
         // ========================================================
-        // FLUJO (solo Arduino del azúcar):
-        //   1) Elegir tamaño -> filtra las bebidas
-        //   2) Elegir bebida y leche
-        //   3) "Hacer pedido" -> POST /pedido {gramos}
+        // FLUJO:
+        //   1) Elegir tamaño  -> POST /vaso   (el vaso empieza a moverse YA)
+        //   2) Elegir bebida y leche mientras el vaso se mueve
+        //   3) "Hacer pedido" se habilita SOLO cuando el vaso se detuvo
+        //      en el tamaño elegido -> POST /pedido (baja el azúcar)
         // Escala física: 0 g = fondo del vaso, 84 g = vaso lleno.
         // ========================================================
         const GRAMOS_VASO_LLENO = 84;
@@ -801,6 +826,7 @@
         const NOTA_TAMANO = { Solo: 'espresso · vaso Short', Doppio: 'espresso · vaso Short' };
 
         const estadoArduino = document.getElementById('estado-arduino');
+        const estadoVasoEl = document.getElementById('estado-vaso');
         const botonEnviarBebida = document.getElementById('btn-enviar-bebida');
         const botonSubirAzucar = document.getElementById('btn-subir-azucar');
         const botonSubirAzucarResultado = document.getElementById('btn-volver-cero-resultado');
@@ -814,21 +840,30 @@
         const btnOtroPedido = document.getElementById('btn-otro-pedido');
 
         let arduinoAzucarConectado = false;
+        let arduinoVasoConectado = false;
         let azucarMoviendo = false;        // según el servidor
+        let vasoMoviendoServidor = false;  // según el servidor
         let arduinosRequierenRevision = false;
+        let moviendoVasoLocal = false;     // esta página espera respuesta de /vaso
         let enviandoPedido = false;        // esta página espera respuesta de /pedido o /azucar/arriba
+        let vasoEnPosicion = null;         // tamaño en que el vaso está detenido (confirmado)
         let pedidoRealizado = false;
 
         let estadoActual = { tamano: null, bebida: null, leche: null, datosFinales: null };
+
+        function vasoMoviendose() { return moviendoVasoLocal || vasoMoviendoServidor; }
+        function vasoListo() {
+            return !vasoMoviendose() && estadoActual.tamano !== null && vasoEnPosicion === estadoActual.tamano;
+        }
 
         function actualizarTimeline() {
             const pasos = [1, 2, 3, 4].map(i => document.getElementById(`t-step-${i}`));
             pasos.forEach(p => p.className = 'timeline-step');
             let activo;
             if (pedidoRealizado) activo = 4;
-            else if (estadoActual.datosFinales) activo = 4;
+            else if (estadoActual.datosFinales) activo = vasoListo() ? 4 : 3;
             else if (estadoActual.tamano) activo = 3;
-            else activo = arduinoAzucarConectado ? 2 : 1;
+            else activo = (arduinoAzucarConectado && arduinoVasoConectado) ? 2 : 1;
             pasos.forEach((p, i) => {
                 if (i + 1 < activo) p.classList.add('completed');
                 else if (i + 1 === activo) p.classList.add('active');
@@ -837,28 +872,53 @@
 
         function mostrarEstadoArduino(mensaje) { estadoArduino.textContent = mensaje; }
 
+        function mostrarEstadoVaso() {
+            estadoVasoEl.className = '';
+            if (!estadoActual.tamano) { estadoVasoEl.textContent = ''; return; }
+            if (vasoMoviendose()) {
+                estadoVasoEl.className = 'moviendo';
+                estadoVasoEl.textContent = `⏳ Moviendo el vaso a ${estadoActual.tamano}... puedes ir eligiendo tu bebida.`;
+            } else if (vasoListo()) {
+                estadoVasoEl.className = 'listo';
+                estadoVasoEl.textContent = `✅ Vaso ${estadoActual.tamano} en posición.`;
+            } else {
+                estadoVasoEl.textContent = `El vaso aún no está en ${estadoActual.tamano}. Vuelve a tocar el tamaño para moverlo.`;
+            }
+        }
+
+        function mostrarEstadoArduino(mensaje) { estadoArduino.textContent = mensaje; }
+
         function actualizarControlesArduino() {
             const libre = !arduinosRequierenRevision && !enviandoPedido;
             const listoParaPedir = libre && !azucarMoviendo &&
-                arduinoAzucarConectado && estadoActual.datosFinales && !pedidoRealizado;
+                arduinoAzucarConectado && arduinoVasoConectado &&
+                estadoActual.datosFinales && vasoListo() && !pedidoRealizado;
 
             botonEnviarBebida.disabled = !listoParaPedir;
+            botonEnviarBebida.textContent = (estadoActual.datosFinales && vasoMoviendose())
+                ? '⏳ Esperando al vaso...'
+                : '☕ Hacer pedido';
 
-            const puedeSubir = libre && !azucarMoviendo && arduinoAzucarConectado;
+            const puedeSubir = libre && !azucarMoviendo && !vasoMoviendose() && arduinoAzucarConectado;
             botonSubirAzucar.disabled = !puedeSubir;
             botonSubirAzucarResultado.disabled = !puedeSubir;
             botonInfoNutri.disabled = !estadoActual.datosFinales;
 
-            bloqueTamano.style.pointerEvents = enviandoPedido ? 'none' : '';
+            // No se puede cambiar el tamaño mientras el vaso se mueve o se baja el azúcar.
+            document.querySelectorAll('#lista-tamanos .opcion-btn').forEach(b => {
+                b.disabled = vasoMoviendose() || enviandoPedido;
+            });
             bloqueBebida.style.pointerEvents = enviandoPedido ? 'none' : '';
             bloqueLeche.style.pointerEvents = enviandoPedido ? 'none' : '';
 
+            mostrarEstadoVaso();
             actualizarTimeline();
         }
 
         async function comprobarConexionArduino() {
             if (location.protocol === 'file:' || location.hostname.endsWith('.github.io')) {
                 arduinoAzucarConectado = false;
+                arduinoVasoConectado = false;
                 mostrarEstadoArduino('Abre esta página desde el servidor Python del computador (http://IP:5000).');
                 actualizarControlesArduino();
                 return;
@@ -868,25 +928,30 @@
                 if (!respuesta.ok) throw new Error('El servidor no respondió');
                 const datos = await respuesta.json();
 
-                arduinoAzucarConectado = Boolean(datos.conectado);
-                azucarMoviendo = Boolean(datos.ocupado);
+                arduinoAzucarConectado = Boolean(datos.conectado_azucar);
+                arduinoVasoConectado = Boolean(datos.conectado_vaso);
+                azucarMoviendo = Boolean(datos.azucar_moviendo);
+                vasoMoviendoServidor = Boolean(datos.vaso_moviendo);
                 arduinosRequierenRevision = Boolean(datos.requiere_revision);
+                if (!moviendoVasoLocal) vasoEnPosicion = datos.tamano_vaso || null;
 
-                if (!enviandoPedido) {
+                if (!enviandoPedido && !moviendoVasoLocal) {
+                    const estadoAzucar = arduinoAzucarConectado ? '✅ Azúcar' : '❌ Azúcar';
+                    const estadoVaso = arduinoVasoConectado ? '✅ Vasos' : '❌ Vasos';
                     if (arduinosRequierenRevision) {
-                        mostrarEstadoArduino('⚠️ Movimiento sin confirmar. Revisa el mecanismo y usa "Desbloquear" en el modo prueba.');
-                    } else if (!arduinoAzucarConectado) {
-                        mostrarEstadoArduino('❌ Arduino desconectado. Revisa el cable y usa "Reintentar conexión" en el modo prueba.');
-                    } else if (azucarMoviendo) {
-                        mostrarEstadoArduino('⏳ Movimiento en curso...');
+                        mostrarEstadoArduino('⚠️ Movimiento sin confirmar. Revisa los mecanismos y reinicia Python.');
+                    } else if (datos.ocupado) {
+                        mostrarEstadoArduino(`⏳ Movimiento en curso | ${estadoAzucar} | ${estadoVaso}`);
                     } else {
-                        mostrarEstadoArduino('✅ Arduino del azúcar conectado');
+                        mostrarEstadoArduino(`${estadoAzucar} | ${estadoVaso}`);
                     }
                 }
             } catch (error) {
                 console.error('Error consultando el servidor:', error);
                 arduinoAzucarConectado = false;
+                arduinoVasoConectado = false;
                 azucarMoviendo = false;
+                vasoMoviendoServidor = false;
                 if (!enviandoPedido) mostrarEstadoArduino('❌ Sin conexión con Python (http://IP:5000).');
             }
             actualizarControlesArduino();
@@ -908,15 +973,41 @@
             return resultado;
         }
 
-        // ---- Subir el azúcar a la altura para cambiar (reposo) ----
+        // ---- PASO 2: mover el vaso apenas se elige el tamaño ----
+        async function moverVaso(tamano) {
+            if (!arduinoVasoConectado || !arduinoAzucarConectado || arduinosRequierenRevision) {
+                mostrarEstadoArduino('El selector de vasos no está disponible: puedes armar la bebida, pero no hacer el pedido.');
+                actualizarControlesArduino();
+                return;
+            }
+            moviendoVasoLocal = true;
+            vasoEnPosicion = null;
+            actualizarControlesArduino();
+            mostrarEstadoArduino(`⏳ Subiendo el azúcar (si hace falta) y moviendo el vaso a ${tamano}...`);
+            try {
+                const r = await postJSON('/vaso', { tamano });
+                vasoEnPosicion = r.tamano;
+                mostrarEstadoArduino(`✅ Vaso ${r.tamano} en posición.`);
+            } catch (error) {
+                console.error('Error moviendo el vaso:', error);
+                vasoEnPosicion = null;
+                mostrarEstadoArduino(`❌ ${error.message}`);
+            } finally {
+                moviendoVasoLocal = false;
+                actualizarControlesArduino();
+                setTimeout(comprobarConexionArduino, 1500);
+            }
+        }
+
+        // ---- Subir el azúcar a reposo (arriba) ----
         async function subirAzucar() {
-            if (!confirm('¿Subir el mecanismo a la altura para cambiar el vaso? No interrumpe movimientos en curso.')) return;
+            if (!confirm('¿Subir el mecanismo de azúcar a su posición de reposo (arriba)? No interrumpe movimientos en curso.')) return;
             enviandoPedido = true;
             actualizarControlesArduino();
-            mostrarEstadoArduino('⏳ Subiendo a la altura para cambiar...');
+            mostrarEstadoArduino('⏳ Subiendo el azúcar...');
             try {
                 await postJSON('/azucar/arriba');
-                mostrarEstadoArduino('✅ Listo para cambiar el vaso.');
+                mostrarEstadoArduino('✅ Azúcar arriba (posición de reposo).');
             } catch (error) {
                 mostrarEstadoArduino(`❌ ${error.message}. Comprueba la posición real antes de repetir.`);
             } finally {
@@ -937,7 +1028,7 @@
             document.getElementById('aura-peligro-overlay').style.opacity = 0;
             document.getElementById('banner-peor-caso').style.display = 'none';
 
-            // Reiniciar selección.
+            // Reiniciar selección (el vaso se queda donde está hasta elegir tamaño de nuevo).
             estadoActual = { tamano: null, bebida: null, leche: null, datosFinales: null };
             bloqueBebida.classList.add('bloqueado');
             bloqueLeche.classList.add('bloqueado');
@@ -1061,11 +1152,11 @@
         }
 
         function seleccionarTamano(tamano) {
-            if (enviandoPedido) return;
+            if (vasoMoviendose() || enviandoPedido) return;
             estadoActual.tamano = tamano;
             bloqueBebida.classList.remove('bloqueado');
             renderizarTodo();
-            bloqueBebida.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            moverVaso(tamano);   // el vaso empieza a moverse YA
         }
 
         function seleccionarBebida(bebida) {
@@ -1159,12 +1250,17 @@
         }
 
         // ==========================================
-        // PASO FINAL: PEDIDO -> MOVER EL AZÚCAR
+        // PASO FINAL: PEDIDO -> BAJAR EL AZÚCAR
+        // (solo se envía cuando el vaso ya se detuvo)
         // ==========================================
         botonEnviarBebida.addEventListener('click', async () => {
             const datosPedido = estadoActual.datosFinales;
             if (!datosPedido) {
                 mostrarEstadoArduino('Selecciona tamaño, bebida y leche primero.');
+                return;
+            }
+            if (!vasoListo()) {
+                mostrarEstadoArduino('⏳ Espera a que el vaso termine de moverse.');
                 return;
             }
             const gramosReales = Number(datosPedido['Sugars (g)']);
@@ -1176,10 +1272,10 @@
 
             enviandoPedido = true;
             actualizarControlesArduino();
-            mostrarEstadoArduino(`⏳ Moviendo el azúcar a ${gramosMotor} g...`);
+            mostrarEstadoArduino(`⏳ Bajando el azúcar a ${gramosMotor} g...`);
 
-            const movimiento = postJSON('/pedido', { gramos: gramosMotor })
-                .then(() => { mostrarEstadoArduino(`✅ Pedido listo: ${gramosMotor} g.`); return true; })
+            const movimiento = postJSON('/pedido', { gramos: gramosMotor, tamano: estadoActual.tamano })
+                .then(() => { mostrarEstadoArduino(`✅ Pedido listo: ${estadoActual.tamano}, ${gramosMotor} g.`); return true; })
                 .catch(error => {
                     console.error('Error durante el movimiento:', error);
                     mostrarEstadoArduino(`❌ ${error.message}. Comprueba la posición real antes de repetir.`);
@@ -1219,10 +1315,12 @@
         }
 
         function pintarEstadoPrueba() {
-            const a = arduinoAzucarConectado;
+            const v = arduinoVasoConectado, a = arduinoAzucarConectado;
             document.getElementById('prueba-estado').innerHTML =
-                `${a ? '✅' : '❌'} Arduino del azúcar` +
+                `${v ? '✅' : '❌'} Vasos ${v && vasoEnPosicion ? '(en ' + vasoEnPosicion + ')' : ''} &nbsp;|&nbsp; ` +
+                `${a ? '✅' : '❌'} Azúcar` +
                 (arduinosRequierenRevision ? '<br>⚠️ Hay un movimiento sin confirmar: revisa a mano y toca "Desbloquear".' : '');
+            document.getElementById('prueba-vasos').classList.toggle('desactivada', !v || pruebaOcupada);
             document.getElementById('prueba-azucar').classList.toggle('desactivada', !a || pruebaOcupada);
         }
 
@@ -1245,14 +1343,6 @@
                 pruebaOcupada = false;
                 await refrescarPrueba();
             }
-        }
-
-        document.querySelectorAll('[data-azucar]').forEach(b => b.onclick = () => comandoPrueba('azucar', b.dataset.azucar));
-
-        function leerMs(id) {
-            const ms = Math.round(Number(document.getElementById(id).value));
-            if (!Number.isFinite(ms) || ms < 0 || ms > 20000) { logPrueba('❌ ms debe estar entre 0 y 20000'); return null; }
-            return ms;
         }
         document.getElementById('prueba-azucar-subir').onclick = () => { const ms = leerMs('prueba-azucar-ms'); if (ms !== null) comandoPrueba('azucar', `SUBIR:${ms}`); };
         document.getElementById('prueba-azucar-bajar').onclick = () => { const ms = leerMs('prueba-azucar-ms'); if (ms !== null) comandoPrueba('azucar', `BAJAR:${ms}`); };
@@ -1287,6 +1377,59 @@
         comprobarConexionArduino();
         setInterval(() => {
             if (!enviandoPedido) comprobarConexionArduino();
+        }, 4000);
+
+        // Botones de tamaño (4 vasos físicos)
+        ['Short', 'Tall', 'Grande', 'Venti'].forEach(t => {
+            const b = document.createElement('button');
+            b.className = 'opcion-btn'; b.type = 'button'; b.textContent = t;
+            b.onclick = () => comandoPrueba('vasos', t);
+            document.getElementById('prueba-vasos-tamanos').appendChild(b);
+        });
+        document.querySelectorAll('[data-vaso]').forEach(b => b.onclick = () => comandoPrueba('vasos', b.dataset.vaso));
+        document.querySelectorAll('[data-azucar]').forEach(b => b.onclick = () => comandoPrueba('azucar', b.dataset.azucar));
+
+        function leerMs(id) {
+            const ms = Math.round(Number(document.getElementById(id).value));
+            if (!Number.isFinite(ms) || ms < 0 || ms > 20000) { logPrueba('❌ ms debe estar entre 0 y 20000'); return null; }
+            return ms;
+        }
+        document.getElementById('prueba-vasos-izq').onclick = () => { const ms = leerMs('prueba-vasos-ms-izq'); if (ms !== null) comandoPrueba('vasos', `IZQ:${ms}`); };
+        document.getElementById('prueba-vasos-der').onclick = () => { const ms = leerMs('prueba-vasos-ms-der'); if (ms !== null) comandoPrueba('vasos', `DER:${ms}`); };
+        document.getElementById('prueba-vasos-fijar').onclick = () => comandoPrueba('vasos', `AQUI:${document.getElementById('prueba-vasos-aqui').value}`);
+        document.getElementById('prueba-azucar-subir').onclick = () => { const ms = leerMs('prueba-azucar-ms'); if (ms !== null) comandoPrueba('azucar', `SUBIR:${ms}`); };
+        document.getElementById('prueba-azucar-bajar').onclick = () => { const ms = leerMs('prueba-azucar-ms'); if (ms !== null) comandoPrueba('azucar', `BAJAR:${ms}`); };
+        document.getElementById('prueba-azucar-ir').onclick = () => {
+            const g = Math.round(Number(document.getElementById('prueba-azucar-g').value));
+            if (!Number.isInteger(g) || g < 0 || g > 84) { logPrueba('❌ Gramos entre 0 y 84'); return; }
+            comandoPrueba('azucar', String(g));
+        };
+
+        document.getElementById('prueba-reconectar').onclick = async () => {
+            logPrueba('Reintentando conexión...');
+            try {
+                const r = await postJSON('/reconectar');
+                logPrueba(r.reconectados.length
+                    ? `Reconectado: ${r.reconectados.join(', ')} (se asume vaso en Short y azúcar arriba)`
+                    : 'Nada nuevo que reconectar.');
+            } catch (e) { logPrueba(`❌ ${e.message}`); }
+            await refrescarPrueba();
+        };
+        document.getElementById('prueba-desbloquear').onclick = async () => {
+            if (!confirm('¿Ya revisaste a mano que los mecanismos estén en su lugar?')) return;
+            try { await postJSON('/desbloquear'); logPrueba('Desbloqueado.'); }
+            catch (e) { logPrueba(`❌ ${e.message}`); }
+            await refrescarPrueba();
+        };
+
+        document.getElementById('btn-abrir-prueba').onclick = () => { modalPrueba.style.display = 'flex'; refrescarPrueba(); };
+        document.getElementById('btn-cerrar-prueba').onclick = () => { modalPrueba.style.display = 'none'; comprobarConexionArduino(); };
+        document.getElementById('modal-prueba-card').addEventListener('click', e => e.stopPropagation());
+        modalPrueba.addEventListener('click', () => { modalPrueba.style.display = 'none'; });
+
+        comprobarConexionArduino();
+        setInterval(() => {
+            if (!enviandoPedido && !moviendoVasoLocal) comprobarConexionArduino();
         }, 4000);
 
         function actualizarPanelMetricasUI() {

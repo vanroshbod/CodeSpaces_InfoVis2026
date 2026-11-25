@@ -1,250 +1,525 @@
-# servidor.py — tablet (navegador) -> Wi-Fi -> Python -> USB -> Arduino Leonardo (azúcar)
-# Requiere: py -m pip install flask pyserial
-# Úsalo solo en una red local de confianza, nunca como servidor público.
-
-import re
+from pathlib import Path
 import threading
 import time
-from pathlib import Path
 
 import serial
 from flask import Flask, abort, jsonify, request, send_from_directory
 
-# AJUSTAR: consulta el COM real en Arduino IDE > Herramientas > Puerto.
-PUERTO_ARDUINO = "COM9"
-BAUDIOS = 9600
-MAX_GRAMOS = 84
-ESPERA_MAXIMA_SEGUNDOS = 40   # peor caso: subir (~12 s) + bajar (~13 s)
+# ==========================================
+# CONFIGURACION DE LOS DOS ARDUINOS
+# ==========================================
 
-CARPETA_PROYECTO = Path(__file__).resolve().parent
-app = Flask(__name__, static_folder=None)
+PUERTO_AZUCAR = "COM11"
+PUERTO_VASO = "COM9"
 
-# Solo este servidor debe tener abierto el puerto USB.
-arduino = None
+VELOCIDAD_SERIAL = 9600
+GRAMOS_MAXIMOS = 84   # bebida con mas azucar del menu = vaso lleno
+
+TAMANOS_VALIDOS = {
+    "Solo", "Doppio", "Short",
+    "Tall", "Grande", "Venti"
+}
+
+TIEMPO_MAX_AZUCAR = 30
+TIEMPO_MAX_VASO = 20   # ahora se detiene en cada vaso, tarda un poco mas
+
+# Si falta un Arduino, el servidor simula su movimiento esperando este
+# tiempo (en segundos) y responde como si hubiera terminado. La pagina
+# lo ve como conectado y no muestra ningun aviso.
+# Solo se simula el que pongas aqui (el otro se usa real y da error si falla).
+SIMULAR_FALTANTES = {"vasos"}
+TIEMPO_SIMULADO = {"vasos": 6, "azucar": 4}
+
+# ==========================================
+# FLUJO DEL PEDIDO
+# ------------------------------------------
+# 1) POST /vaso {tamano}
+#      - Si el azucar no esta arriba, primero lo sube (para no chocar).
+#      - Mueve el selector de vasos y espera LISTO.
+#    La pagina hace esto apenas se elige el tamano, mientras el
+#    usuario sigue eligiendo bebida y leche.
+# 2) POST /pedido {gramos, tamano}
+#      - Solo se acepta si el vaso YA llego a ese tamano y no se esta
+#        moviendo. Recien ahi se manda el nivel al Arduino del azucar.
+# 3) POST /azucar/arriba  -> vuelve el azucar a su posicion de reposo.
+# ==========================================
+
+CARPETA = Path(__file__).resolve().parent
+app = Flask(__name__)
+
+arduino_azucar = None
+arduino_vaso = None
+
+bloqueo_azucar = threading.Lock()
+bloqueo_vaso = threading.Lock()
+bloqueo_estado = threading.Lock()
+
 requiere_revision = False
-movimiento_en_curso = threading.Lock()
+azucar_arriba = True          # al encender el mecanismo debe estar arriba
+tamano_vaso_actual = "Short"  # ultimo tamano CONFIRMADO (al encender: Short)
+tamano_vaso_destino = None    # tamano al que se esta moviendo (si se mueve)
+
+
+def esta_conectado(dispositivo):
+    return dispositivo is not None and dispositivo.is_open
+
+
+def disponible(dispositivo, nombre):
+    """Conectado de verdad, o simulado si falta el cable."""
+    return esta_conectado(dispositivo) or (
+        dispositivo is None and nombre in SIMULAR_FALTANTES
+    )
 
 
 # ==========================================
-# PÁGINA Y RECURSOS
+# MOSTRAR HTML Y RECURSOS
 # ==========================================
 
 @app.get("/")
-def pagina_principal():
-    return send_from_directory(CARPETA_PROYECTO, "index.html")
+def inicio():
+    return send_from_directory(CARPETA, "index.html")
 
 
-@app.get("/<path:archivo>")
-def recursos(archivo):
-    # Archivos usados por el HTML: JSON, imágenes, sonidos, V1.html, etc.
-    extensiones_permitidas = {
-        ".html", ".json", ".js", ".css", ".png", ".jpg", ".jpeg",
-        ".svg", ".webp", ".gif", ".ico", ".mp3", ".wav", ".ogg",
-        ".woff", ".woff2"
+@app.get("/<path:ruta>")
+def recursos_del_proyecto(ruta):
+    permitidas = {
+        ".json", ".jpg", ".jpeg", ".png",
+        ".wav", ".mp3", ".html", ".svg",
+        ".webp", ".css", ".js", ".gif"
     }
-    if Path(archivo).suffix.lower() not in extensiones_permitidas:
+
+    if Path(ruta).suffix.lower() not in permitidas:
         abort(404)
-    return send_from_directory(CARPETA_PROYECTO, archivo)
+
+    return send_from_directory(CARPETA, ruta)
 
 
 # ==========================================
-# CONEXIÓN USB
+# ESTADO DE LOS ARDUINOS
 # ==========================================
 
-def abrir_puerto():
-    try:
-        dispositivo = serial.Serial(
-            port=PUERTO_ARDUINO,
-            baudrate=BAUDIOS,
-            timeout=0.35,
-            write_timeout=2,
-        )
-        print(f"Arduino conectado en {PUERTO_ARDUINO} a {BAUDIOS} baudios", flush=True)
-        return dispositivo
-    except (serial.SerialException, OSError) as exc:
-        print(
-            f"No se pudo abrir {PUERTO_ARDUINO}: {exc}\n"
-            "Revisa el cable/puerto COM y cierra el Monitor Serie del IDE Arduino.\n"
-            "Luego usa 'Reintentar conexión' en el modo prueba de la página.",
-            flush=True,
-        )
-        return None
-
-
-def esta_conectado():
-    return arduino is not None and arduino.is_open
-
-
-def cerrar_puerto(motivo):
-    """Cierra el puerto si se cayó el cable, para que /estado lo muestre."""
-    global arduino
-    try:
-        if arduino is not None:
-            arduino.close()
-    except Exception:
-        pass
-    arduino = None
-    print(f"Puerto cerrado: {motivo}", flush=True)
-
-
-def verificar_conexion():
-    """Detecta un cable desconectado aunque el puerto siga 'abierto'."""
-    if arduino is None or movimiento_en_curso.locked():
+def verificar_conexion(nombre):
+    """Detecta un cable desconectado aunque el puerto siga 'abierto'.
+    Solo se revisa si ese Arduino no esta en medio de un movimiento."""
+    disp = arduino_azucar if nombre == "azucar" else arduino_vaso
+    bloqueo = bloqueo_azucar if nombre == "azucar" else bloqueo_vaso
+    if disp is None or bloqueo.locked():
         return
     try:
-        _ = arduino.in_waiting
+        _ = disp.in_waiting
     except (serial.SerialException, OSError) as exc:
-        cerrar_puerto(exc)
+        cerrar_si_se_cayo(nombre, exc)
 
 
 @app.get("/estado")
 def estado():
-    verificar_conexion()
-    return jsonify({
-        "conectado": esta_conectado(),
-        "ocupado": movimiento_en_curso.locked(),
-        "requiere_revision": requiere_revision,
-    })
+    verificar_conexion("azucar")
+    verificar_conexion("vasos")
+    vaso_moviendo = bloqueo_vaso.locked()
+    azucar_moviendo = bloqueo_azucar.locked()
+    return jsonify(
+        conectado=(
+            disponible(arduino_azucar, "azucar")
+            and disponible(arduino_vaso, "vasos")
+        ),
+        conectado_azucar=disponible(arduino_azucar, "azucar"),
+        conectado_vaso=disponible(arduino_vaso, "vasos"),
+        ocupado=vaso_moviendo or azucar_moviendo,
+        vaso_moviendo=vaso_moviendo,
+        azucar_moviendo=azucar_moviendo,
+        azucar_arriba=azucar_arriba,
+        tamano_vaso=tamano_vaso_actual,
+        tamano_vaso_destino=tamano_vaso_destino,
+        requiere_revision=requiere_revision
+    )
 
 
 # ==========================================
-# ENVIAR UN COMANDO Y ESPERAR RESPUESTA
+# ENVIAR UNA ORDEN Y ESPERAR CONFIRMACION
 # ==========================================
 
-def enviar_comando(comando, timeout=ESPERA_MAXIMA_SEGUNDOS,
-                   marcar_revision=True, prefijo_respuesta=None):
-    """Envía un comando y espera LISTO:<comando> (o una línea con el prefijo
-    indicado). Devuelve (respuesta_json, codigo_http)."""
+def esperar_confirmacion(dispositivo, mensaje_esperado, tiempo_maximo,
+                         prefijos=None):
+    limite = time.monotonic() + tiempo_maximo
+
+    while time.monotonic() < limite:
+        linea = dispositivo.readline().decode(
+            "ascii", errors="replace"
+        ).strip()
+
+        if linea == mensaje_esperado:
+            return linea
+
+        if prefijos and linea.startswith(tuple(prefijos)):
+            return linea
+
+        if linea.startswith("ERROR:"):
+            raise RuntimeError(linea)
+
+    raise TimeoutError(
+        f"Sin confirmacion: {mensaje_esperado}"
+    )
+
+
+def cerrar_si_se_cayo(nombre, exc):
+    """Si el USB se desconecto, cierra el puerto para que /estado lo muestre."""
+    global arduino_azucar, arduino_vaso
+    if not isinstance(exc, (serial.SerialException, OSError)):
+        return
+    disp = arduino_azucar if nombre == "azucar" else arduino_vaso
+    try:
+        if disp is not None:
+            disp.close()
+    except Exception:
+        pass
+    if nombre == "azucar":
+        arduino_azucar = None
+    else:
+        arduino_vaso = None
+    print(f"[{nombre}] puerto cerrado: {exc}", flush=True)
+
+
+def enviar_y_esperar(nombre, dispositivo, comando, confirmacion, timeout,
+                     marcar_revision=True, prefijos=None):
+    """Manda un comando y bloquea hasta recibir la confirmacion.
+    Si algo falla despues de enviar, marca requiere_revision."""
     global requiere_revision
 
-    if not esta_conectado():
-        return {"error": "Arduino desconectado. Revisa el cable y usa "
-                         "'Reintentar conexión' en el modo prueba."}, 503
+    if not esta_conectado(dispositivo) and nombre in SIMULAR_FALTANTES:
+        # Arduino ausente: se espera el tiempo que tardaria y se da por listo.
+        time.sleep(TIEMPO_SIMULADO.get(nombre, 3))
+        print(f"[{nombre}] (simulado) {comando}", flush=True)
+        return confirmacion
 
-    # Bloquear pedidos simultáneos, incluso desde dos tablets a la vez.
-    if not movimiento_en_curso.acquire(blocking=False):
-        return {"error": "El motor está ocupado. Espera que finalice."}, 409
+    if not esta_conectado(dispositivo):
+        raise ConnectionError(
+            f"Arduino de {nombre} desconectado. "
+            "Revisa el cable y usa 'Reintentar conexion'."
+        )
 
     try:
-        arduino.reset_input_buffer()
-        arduino.write(f"{comando}\n".encode("ascii"))
-        arduino.flush()
-        print(f"Enviado: {comando}", flush=True)
-
-        esperado = f"LISTO:{comando}"
-        final = time.monotonic() + timeout
-        while time.monotonic() < final:
-            recibido = arduino.readline().decode("ascii", errors="replace").strip()
-            if recibido == esperado or (
-                prefijo_respuesta and recibido.startswith(prefijo_respuesta)
-            ):
-                print(f"Arduino respondió: {recibido}", flush=True)
-                return {"estado": "completado", "respuesta": recibido}, 200
-            if recibido.startswith("ERROR:"):
-                if marcar_revision:
-                    requiere_revision = True
-                return {"error": "El Arduino rechazó el comando: " + recibido}, 422
-
+        dispositivo.reset_input_buffer()
+        dispositivo.write((comando + "\n").encode("ascii"))
+        dispositivo.flush()
+        print(f"[{nombre}] enviado: {comando}", flush=True)
+        respuesta = esperar_confirmacion(
+            dispositivo, confirmacion, timeout, prefijos
+        )
+    except (TimeoutError, RuntimeError, TypeError, AttributeError,
+            serial.SerialException, OSError) as exc:
+        if isinstance(exc, (TypeError, AttributeError)):
+            exc = OSError("el puerto USB se cerro o se desconecto")
+        cerrar_si_se_cayo(nombre, exc)
         if marcar_revision:
             requiere_revision = True
-        return {"error": "No llegó LISTO desde el Arduino. "
-                         "Comprueba el motor antes de seguir."}, 504
+        raise RuntimeError(
+            f"{nombre}: {exc}. Revisa el mecanismo."
+        ) from exc
 
-    except (serial.SerialException, OSError) as exc:
-        cerrar_puerto(exc)
-        if marcar_revision:
-            requiere_revision = True
-        return {"error": "Se perdió la conexión USB. Revisa el cable y usa "
-                         "'Reintentar conexión' en el modo prueba."}, 503
-
-    finally:
-        movimiento_en_curso.release()
+    print(f"[{nombre}] respuesta: {respuesta}", flush=True)
+    return respuesta
 
 
-def bloqueado_por_revision():
-    return jsonify(error="Revisa la posición física del mecanismo y usa "
-                         "'Desbloquear' en el modo prueba."), 423
+def subir_azucar():
+    """Sube el azucar al tope. Debe llamarse con bloqueo_azucar tomado."""
+    global azucar_arriba
+    enviar_y_esperar(
+        "azucar", arduino_azucar, "ARRIBA",
+        "LISTO:ARRIBA", TIEMPO_MAX_AZUCAR
+    )
+    azucar_arriba = True
+
+
+def error_revision():
+    return jsonify(
+        error="Movimiento anterior sin confirmar. "
+              "Revisa las posiciones y reinicia Python."
+    ), 423
 
 
 # ==========================================
-# PEDIDO NORMAL
+# PASO 1: MOVER EL SELECTOR DE VASOS
+# ==========================================
+
+@app.post("/vaso")
+def mover_vaso():
+    global tamano_vaso_actual, tamano_vaso_destino
+
+    if requiere_revision:
+        return error_revision()
+
+    datos = request.get_json(silent=True) or {}
+    tamano = datos.get("tamano")
+
+    if not isinstance(tamano, str) or tamano not in TAMANOS_VALIDOS:
+        return jsonify(
+            error="Tamano invalido: Solo, Doppio, "
+                  "Short, Tall, Grande o Venti."
+        ), 400
+
+    for nombre, disp in (("vasos", arduino_vaso),
+                         ("azucar", arduino_azucar)):
+        if not disponible(disp, nombre):
+            return jsonify(
+                error=f"Arduino de {nombre} desconectado. "
+                      "Revisa el cable y usa 'Reintentar conexion'."
+            ), 503
+
+    # Se necesitan los dos: el azucar no puede moverse mientras gira el vaso.
+    if not bloqueo_vaso.acquire(blocking=False):
+        return jsonify(
+            error="El selector de vasos ya se esta moviendo."
+        ), 409
+    if not bloqueo_azucar.acquire(blocking=False):
+        bloqueo_vaso.release()
+        return jsonify(
+            error="El azucar se esta moviendo; espera."
+        ), 409
+
+    try:
+        with bloqueo_estado:
+            tamano_vaso_destino = tamano
+            tamano_vaso_actual = None   # posicion intermedia mientras se mueve
+
+        if not azucar_arriba:
+            subir_azucar()
+
+        enviar_y_esperar(
+            "vasos", arduino_vaso, tamano,
+            f"LISTO:{tamano}", TIEMPO_MAX_VASO
+        )
+
+        with bloqueo_estado:
+            tamano_vaso_actual = tamano
+
+        return jsonify(estado="completado", tamano=tamano)
+
+    except (RuntimeError, ConnectionError,
+            serial.SerialException, OSError) as exc:
+        return jsonify(error=str(exc)), 504
+
+    finally:
+        with bloqueo_estado:
+            tamano_vaso_destino = None
+        bloqueo_azucar.release()
+        bloqueo_vaso.release()
+
+
+# ==========================================
+# PASO 2: BAJAR EL AZUCAR AL NIVEL DEL PEDIDO
 # ==========================================
 
 @app.post("/pedido")
 def pedido():
-    datos = request.get_json(silent=True)
-    if not isinstance(datos, dict):
-        return jsonify(error="Envía un JSON con el campo 'gramos'."), 400
-    gramos = datos.get("gramos")
-
-    # Solo enteros (sin booleanos) entre 0 y 84: mismo rango que el HTML.
-    if type(gramos) is not int or not 0 <= gramos <= MAX_GRAMOS:
-        return jsonify(error="'gramos' debe ser un entero entre 0 y 84."), 400
+    global azucar_arriba
 
     if requiere_revision:
-        return bloqueado_por_revision()
+        return error_revision()
 
-    respuesta, codigo = enviar_comando(str(gramos))
-    if codigo == 200:
-        respuesta["gramos"] = gramos
-    return jsonify(respuesta), codigo
+    datos = request.get_json(silent=True) or {}
+    gramos = datos.get("gramos")
+    tamano = datos.get("tamano")
 
+    if (
+        type(gramos) is not int
+        or not 0 <= gramos <= GRAMOS_MAXIMOS
+    ):
+        return jsonify(
+            error=f"Gramos invalidos: debe ser entero "
+                  f"entre 0 y {GRAMOS_MAXIMOS}."
+        ), 400
+
+    # El azucar solo se manda cuando el vaso ya termino de moverse
+    # y quedo en el tamano del pedido.
+    if bloqueo_vaso.locked():
+        return jsonify(
+            error="El vaso todavia se esta moviendo; "
+                  "espera a que se detenga."
+        ), 409
+
+    if tamano != tamano_vaso_actual:
+        return jsonify(
+            error=f"El vaso no esta en {tamano}. "
+                  "Vuelve a seleccionar el tamano."
+        ), 409
+
+    if not bloqueo_azucar.acquire(blocking=False):
+        return jsonify(
+            error="El azucar se esta moviendo; espera."
+        ), 409
+
+    try:
+        azucar_arriba = False   # desde aqui puede quedar abajo
+        enviar_y_esperar(
+            "azucar", arduino_azucar, str(gramos),
+            f"LISTO:{gramos}", TIEMPO_MAX_AZUCAR
+        )
+        azucar_arriba = False   # 84 g tambien queda 2 cm bajo el tope
+
+        return jsonify(
+            estado="completado",
+            gramos=gramos,
+            tamano=tamano
+        )
+
+    except (RuntimeError, ConnectionError,
+            serial.SerialException, OSError) as exc:
+        return jsonify(error=str(exc)), 504
+
+    finally:
+        bloqueo_azucar.release()
+
+
+# ==========================================
+# VOLVER EL AZUCAR ARRIBA (REPOSO)
+# ==========================================
 
 @app.post("/azucar/arriba")
-def azucar_arriba():
-    """Sube el mecanismo a la altura para cambiar (posición de reposo)."""
+def azucar_a_reposo():
     if requiere_revision:
-        return bloqueado_por_revision()
-    respuesta, codigo = enviar_comando("ARRIBA")
-    return jsonify(respuesta), codigo
+        return error_revision()
+
+    if not bloqueo_azucar.acquire(blocking=False):
+        return jsonify(
+            error="El azucar se esta moviendo; espera."
+        ), 409
+
+    try:
+        subir_azucar()
+        return jsonify(estado="completado", azucar_arriba=True)
+
+    except (RuntimeError, ConnectionError,
+            serial.SerialException, OSError) as exc:
+        return jsonify(error=str(exc)), 504
+
+    finally:
+        bloqueo_azucar.release()
+
 
 
 # ==========================================
-# MODO PRUEBA / CALIBRACIÓN
+# MODO PRUEBA / CALIBRACION
+# ------------------------------------------
+# Permite usar cada Arduino por separado (aunque el otro no
+# este conectado) y reconectar sin reiniciar Python.
+# OJO: aqui NO se sube el azucar automaticamente antes de mover
+# los vasos. Revisa que no choquen.
 # ==========================================
 
-PATRON_PRUEBA = re.compile(r"^(\d{1,2}|ARRIBA|\?|(SUBIR|BAJAR):\d{1,5}|AQUI:(\d{1,2}|ARRIBA))$")
+import re
+
+PATRONES_PRUEBA = {
+    "vasos": re.compile(
+        r"^(Solo|Doppio|Short|Tall|Grande|Venti|\+|-|\?"
+        r"|(DER|IZQ):\d{1,5}"
+        r"|AQUI:(Solo|Doppio|Short|Tall|Grande|Venti))$"
+    ),
+    "azucar": re.compile(
+        r"^(\d{1,2}|ARRIBA|\?|(SUBIR|BAJAR):\d{1,5}"
+        r"|AQUI:(ARRIBA|\d{1,2}))$"
+    ),
+}
+
+
+def tiempo_maximo_prueba(nombre, comando):
+    m = re.search(r":(\d+)$", comando)
+    if m and not comando.startswith("AQUI"):
+        return int(m.group(1)) / 1000 + 5
+    return TIEMPO_MAX_VASO if nombre == "vasos" else TIEMPO_MAX_AZUCAR
+
+
+def actualizar_estado_tras_prueba(nombre, comando):
+    global tamano_vaso_actual, azucar_arriba
+    if nombre == "vasos":
+        if comando in TAMANOS_VALIDOS:
+            tamano_vaso_actual = comando
+        elif comando.startswith("AQUI:"):
+            tamano_vaso_actual = comando.split(":", 1)[1]
+        elif comando != "?":
+            tamano_vaso_actual = None   # posicion sin nombre conocido
+    else:
+        if comando in ("ARRIBA", "AQUI:ARRIBA"):
+            azucar_arriba = True
+        elif comando.isdigit():
+            azucar_arriba = False
+        elif comando.startswith("AQUI:"):
+            azucar_arriba = comando == "AQUI:ARRIBA"
+        elif comando != "?":
+            azucar_arriba = False       # movimiento manual: posicion incierta
 
 
 @app.post("/prueba")
 def prueba():
     datos = request.get_json(silent=True) or {}
+    nombre = datos.get("arduino")
     comando = str(datos.get("comando", "")).strip()
 
-    if not PATRON_PRUEBA.match(comando):
+    if nombre not in PATRONES_PRUEBA:
+        return jsonify(error="Arduino invalido: 'vasos' o 'azucar'."), 400
+    if not PATRONES_PRUEBA[nombre].match(comando):
         return jsonify(error=f"Comando no permitido: {comando}"), 400
+    if comando.isdigit() and not 0 <= int(comando) <= GRAMOS_MAXIMOS:
+        return jsonify(error=f"Gramos entre 0 y {GRAMOS_MAXIMOS}."), 400
+    m = re.search(r":(\d+)$", comando)
+    if m and not comando.startswith("AQUI") and int(m.group(1)) > 20000:
+        return jsonify(error="Maximo 20000 ms por prueba."), 400
 
-    numero = re.search(r"(\d+)$", comando)
-    if numero and (comando.isdigit() or comando.startswith("AQUI:")):
-        if int(numero.group(1)) > MAX_GRAMOS:
-            return jsonify(error=f"Gramos entre 0 y {MAX_GRAMOS}."), 400
+    disp = arduino_azucar if nombre == "azucar" else arduino_vaso
+    bloqueo = bloqueo_azucar if nombre == "azucar" else bloqueo_vaso
 
-    timeout = ESPERA_MAXIMA_SEGUNDOS
-    if comando.startswith(("SUBIR:", "BAJAR:")):
-        ms = int(numero.group(1))
-        if ms > 20000:
-            return jsonify(error="Máximo 20000 ms por prueba."), 400
-        timeout = ms / 1000 + 5
+    if not bloqueo.acquire(blocking=False):
+        return jsonify(error=f"El Arduino de {nombre} esta ocupado."), 409
 
-    respuesta, codigo = enviar_comando(
-        comando, timeout=timeout, marcar_revision=False,
-        prefijo_respuesta="NIVEL:" if comando == "?" else None,
-    )
-    return jsonify(respuesta), codigo
+    try:
+        prefijos = None
+        if comando == "?":
+            prefijos = ["POS:"] if nombre == "vasos" else ["NIVEL:"]
+        respuesta = enviar_y_esperar(
+            nombre, disp, comando, f"LISTO:{comando}",
+            tiempo_maximo_prueba(nombre, comando),
+            marcar_revision=False, prefijos=prefijos
+        )
+        actualizar_estado_tras_prueba(nombre, comando)
+        return jsonify(estado="completado", respuesta=respuesta)
+
+    except (RuntimeError, ConnectionError,
+            serial.SerialException, OSError) as exc:
+        return jsonify(error=str(exc)), 504
+
+    finally:
+        bloqueo.release()
 
 
 @app.post("/reconectar")
 def reconectar():
-    """Vuelve a abrir el puerto si el cable se desconectó."""
-    global arduino
-    verificar_conexion()
+    """Vuelve a abrir los puertos que esten cerrados (cable reconectado)."""
+    global arduino_azucar, arduino_vaso, tamano_vaso_actual, azucar_arriba
+    verificar_conexion("azucar")
+    verificar_conexion("vasos")
     reconectados = []
-    if not esta_conectado() and not movimiento_en_curso.locked():
-        arduino = abrir_puerto()
-        if arduino:
+
+    if not esta_conectado(arduino_azucar) and not bloqueo_azucar.locked():
+        arduino_azucar = abrir_puerto("azucar", PUERTO_AZUCAR)
+        if arduino_azucar:
+            # Al reconectar el cable el Leonardo se reinicia y asume ARRIBA.
+            azucar_arriba = True
             reconectados.append("azucar")
-            time.sleep(1)
-    return jsonify(reconectados=reconectados, conectado=esta_conectado())
+
+    if not esta_conectado(arduino_vaso) and not bloqueo_vaso.locked():
+        arduino_vaso = abrir_puerto("vasos", PUERTO_VASO)
+        if arduino_vaso:
+            # Se reinicia en POSICION_INICIAL (Short).
+            tamano_vaso_actual = "Short"
+            reconectados.append("vasos")
+
+    if reconectados:
+        time.sleep(1)
+
+    return jsonify(
+        reconectados=reconectados,
+        conectado_azucar=disponible(arduino_azucar, "azucar"),
+        conectado_vaso=disponible(arduino_vaso, "vasos")
+    )
 
 
 @app.post("/desbloquear")
@@ -254,24 +529,83 @@ def desbloquear():
     requiere_revision = False
     return jsonify(estado="desbloqueado")
 
+# ==========================================
+# CONECTAR PUERTOS USB
+# ==========================================
+
+def abrir_puerto(nombre, puerto):
+    try:
+        dispositivo = serial.Serial(
+            puerto,
+            VELOCIDAD_SERIAL,
+            timeout=0.3,
+            write_timeout=2
+        )
+
+        print(
+            f"Arduino de {nombre}: "
+            f"conectado en {puerto}",
+            flush=True
+        )
+
+        return dispositivo
+
+    except (serial.SerialException, OSError) as exc:
+        print(
+            f"No se pudo conectar el Arduino "
+            f"de {nombre} en {puerto}: {exc}",
+            flush=True
+        )
+
+        return None
+
 
 # ==========================================
-# INICIAR
+# INICIAR SERVIDOR
 # ==========================================
 
 if __name__ == "__main__":
-    print("IMPORTANTE: coloca el mecanismo físicamente en la ALTURA PARA CAMBIAR antes de iniciar.")
 
-    # Si no conecta, el servidor igual parte: se puede reintentar desde la página.
-    arduino = abrir_puerto()
+    if PUERTO_AZUCAR == PUERTO_VASO:
+        raise SystemExit(
+            "Configura dos puertos COM diferentes."
+        )
 
-    # Tiempo de preparación del puerto del Arduino Leonardo.
+    print(
+        "ANTES DE SEGUIR: el azucar debe estar ARRIBA y el "
+        "selector de vasos en el vaso Short.",
+        flush=True
+    )
+
+    arduino_azucar = abrir_puerto(
+        "azucar", PUERTO_AZUCAR
+    )
+
+    arduino_vaso = abrir_puerto(
+        "vasos", PUERTO_VASO
+    )
+
     time.sleep(2)
-    print("En el PC: http://localhost:5000")
-    print("En la tablet: http://IP_DEL_PC:5000 (misma red Wi-Fi)")
+
+    print("Desde el PC: http://localhost:5000")
+    print(
+        "Desde la tablet: "
+        "http://IP_DEL_COMPUTADOR:5000"
+    )
+
     try:
-        app.run(host="0.0.0.0", port=5000, debug=False,
-                use_reloader=False, threaded=True)
+        app.run(
+            host="0.0.0.0",
+            port=5000,
+            debug=False,
+            use_reloader=False,
+            threaded=True   # /estado responde mientras se mueve el vaso
+        )
+
     finally:
-        if esta_conectado():
-            arduino.close()
+        for dispositivo in (
+            arduino_azucar,
+            arduino_vaso
+        ):
+            if esta_conectado(dispositivo):
+                dispositivo.close()
