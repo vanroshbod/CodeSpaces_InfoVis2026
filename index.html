@@ -739,6 +739,7 @@
             <p id="estado-arduino" role="status" aria-live="polite" class="instrucciones" style="margin-top: 0; margin-bottom: 0; font-size: 0.82em; color: #c9b8ab; text-align: center;">
                 Comprobando la conexión con el computador...
             </p>
+            <a id="link-modo-demo" href="demo.html" class="opcion-btn" style="display: block; text-align: center; text-decoration: none; margin-top: 8px;">▶ Probar sin Arduino (modo demostración)</a>
             <button id="btn-abrir-prueba" class="opcion-btn" type="button">🔧 Modo prueba / calibración</button>
         </div>
 
@@ -845,6 +846,8 @@
         let vasoMoviendoServidor = false;  // según el servidor
         let arduinosRequierenRevision = false;
         let moviendoVasoLocal = false;     // esta página espera respuesta de /vaso
+        // Modo demostración (demo.html o index.html?demo): no usa el servidor; simula el movimiento y reproduce el sonido.
+        const MODO_DEMO = new URLSearchParams(location.search).has('demo');
         let enviandoPedido = false;        // esta página espera respuesta de /pedido o /azucar/arriba
         let vasoEnPosicion = null;         // tamaño en que el vaso está detenido (confirmado)
         let pedidoRealizado = false;
@@ -916,6 +919,16 @@
         }
 
         async function comprobarConexionArduino() {
+            if (MODO_DEMO) {
+                arduinoAzucarConectado = true;
+                arduinoVasoConectado = true;
+                azucarMoviendo = false;
+                vasoMoviendoServidor = false;
+                arduinosRequierenRevision = false;
+                if (!enviandoPedido && !moviendoVasoLocal) mostrarEstadoArduino('Modo demostración: el movimiento del vaso y del azúcar se simula; el sonido es el mismo de la versión física.');
+                actualizarControlesArduino();
+                return;
+            }
             if (location.protocol === 'file:' || location.hostname.endsWith('.github.io')) {
                 arduinoAzucarConectado = false;
                 arduinoVasoConectado = false;
@@ -960,7 +973,14 @@
 
         botonComprobarConexion.addEventListener('click', comprobarConexionArduino);
 
+        function simularServidor(url, cuerpo) {
+            const esperas = { '/vaso': 1500, '/pedido': 3000, '/azucar/arriba': 1000 };
+            if (!(url in esperas)) return Promise.reject(new Error('No disponible en modo demostración'));
+            return new Promise(resolve => setTimeout(() => resolve({ ok: true, tamano: cuerpo && cuerpo.tamano }), esperas[url]));
+        }
+
         async function postJSON(url, cuerpo) {
+            if (MODO_DEMO) return simularServidor(url, cuerpo);
             const respuesta = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1495,6 +1515,14 @@
                     sugarPlayer.start(Tone.now() + 0.15, 0, escalaDuracionAzucar(gramosAzucar));
                 }
             }
+        }
+        if (MODO_DEMO) {
+            document.title = '[Demo] ' + document.title;
+            const linkDemo = document.getElementById('link-modo-demo');
+            linkDemo.textContent = '↩ Volver a la versión con Arduino';
+            linkDemo.href = 'index.html';
+            document.getElementById('btn-abrir-prueba').style.display = 'none';
+            document.getElementById('btn-conectar-arduino').style.display = 'none';
         }
     </script>
 </body>
