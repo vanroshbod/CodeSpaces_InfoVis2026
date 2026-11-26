@@ -1081,8 +1081,7 @@
         // ========================================================
         const sugarHighpass = new Tone.Filter({ frequency: 3000, type: "highpass", rolloff: -12 }).toDestination();
         const sugarPlayer = new Tone.Player({ url: "data/sugar_sound.wav", autostart: false, volume: -8 }).connect(sugarHighpass);
-        const glupLowpass = new Tone.Filter({ frequency: 750, type: "lowpass", rolloff: -12 }).toDestination();
-        const glupPlayer = new Tone.Player({ url: "data/glup_glup_sound.mp3", autostart: false, volume: -4 }).connect(glupLowpass);
+        // V4: se quitó el glup-glup; en la evaluación con usuarios se confundía con otro dato. Solo suena el azúcar.
 
         let datosOriginales = [];
         let agrupadoPorBebida = new Map();
@@ -1487,18 +1486,12 @@
             if (Tone.context.state !== 'running') await Tone.start();
             const gramosAzucar = Number(datos['Sugars (g)']) || 0;
 
-            // Sonido de líquido con duración fija (ya no depende de las calorías).
-            if (glupPlayer.loaded) {
-                glupPlayer.stop();
-                glupPlayer.playbackRate = 1.0;
-                glupPlayer.start(Tone.now(), 0, 2.5);
-            }
-
             if (sugarPlayer.loaded) {
                 sugarPlayer.stop();
                 if (gramosAzucar > 0) {
                     sugarPlayer.playbackRate = 1.0;
-                    const escalaDuracionAzucar = d3.scaleLinear().domain([1, 80]).range([1.6, 4.0]).clamp(true);
+                    // sugar_sound.wav dura 3,39 s: el rango no puede superar ese largo o las bebidas sobre ~60 g suenan igual.
+                    const escalaDuracionAzucar = d3.scaleLinear().domain([1, 84]).range([1.2, 3.3]).clamp(true);
                     sugarPlayer.start(Tone.now() + 0.15, 0, escalaDuracionAzucar(gramosAzucar));
                 }
             }
